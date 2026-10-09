@@ -1,0 +1,5 @@
+# Core CodeDumper runs with 0 external dependencies (Standard Library only)
+# Companion git auto-commit watcher and test dependencies:
+watchdog>=4.0.0
+gitpython>=3.1.0
+pytest>=8.0.0
