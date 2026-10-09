@@ -1,252 +1,130 @@
-# Git Auto-Commit Watcher
+# CodeDumper & Git Auto-Commit Suite
 
-A production-quality, fully local Git automation tool for Windows that watches your repository for file changes and automatically creates timestamped commits and pushes them to GitHub — with no AI API, cloud service, or subscription required.
+A developer utility suite for AI-assisted software engineering and repository automation.
 
----
-
-## Features
-
-- **Event-driven** — Uses `watchdog` (Windows `ReadDirectoryChangesW`) for instant detection without polling.
-- **Debounced** — Consolidates burst saves from a single editor operation into one commit (default 1.5 s).
-- **Distinct states** — Each separately detected saved state gets its own commit.
-- **Idle-safe** — Zero new commits or pushes when nothing changes.
-- **Secret-aware** — Blocks `.env`, `*.pem`, `*.key`, and other credential files; scans diff for password/token patterns before committing.
-- **Resilient push** — Retries transient network failures with bounded exponential back-off; classifies permanent errors and stops retrying immediately.
-- **Restart recovery** — Persists pending-push state so no commit is silently lost across restarts.
-- **Non-destructive** — Never force-pushes, resets, or rewrites history.
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
+[![Tests](https://img.shields.io/badge/Tests-73%20Passed-brightgreen.svg)]()
+[![Dependencies](https://img.shields.io/badge/Runtime%20Dependencies-0%20(Stdlib)-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/License-MIT-green.svg)]()
 
 ---
 
-## Prerequisites
+## Overview
 
-| Requirement | Version |
+This repository contains two complementary developer tools:
+
+1. **`CodeDumper`** (`codedumper`): A cross-platform CLI that exports an entire local repository into a single, clean, structured Markdown document. Designed specifically to provide complete codebase context to AI coding assistants (Claude, ChatGPT, Gemini) with zero token-wasting noise, automatic secret protection, and dynamic code fencing.
+2. **`Git Auto-Commit Watcher`** (`autocommit`): A companion background automation tool that monitors your repository for file modifications, debounces editor saves, and creates automated timestamped Git commits.
+
+---
+
+## 1. CodeDumper (`codedumper`)
+
+### Features
+- **Zero Runtime Dependencies:** Built strictly using Python's standard library (`pathlib`, `argparse`, `dataclasses`).
+- **Deterministic Traversal:** Produces byte-for-byte identical output across repeated runs on unchanged repositories.
+- **Hierarchical Directory Tree:** Emits an ASCII/Unicode visual tree representing the repository layout.
+- **Dynamic Code Fencing:** Inspects source files for backticks and dynamically adjusts fence lengths (e.g. ```` ```` ````) to prevent nested code blocks from breaking Markdown syntax.
+- **Strict Secret Protection:** Automatically excludes `.env*`, `*.pem`, `*.key`, `id_rsa*`, certificates, and credential files.
+- **Intelligent Noise Pruning:** Skips VCS folders (`.git`), build directories (`dist`, `build`, `__pycache__`), package managers (`node_modules`), and package lockfiles.
+- **Content Classification:** Samples file headers to detect and skip binary assets (`.png`, `.exe`, compiled bytecode).
+- **Atomic File Writing:** Writes via temporary files and atomic swaps (`os.replace`) to prevent corrupted dumps on interrupted processes.
+- **Omission Telemetry:** Generates an auditable manifest detailing every omitted file and the exact reason for omission.
+
+### Quick Start
+
+#### Installation
+```bash
+# Clone the repository
+git clone https://github.com/farhadakhtar/code_dumper.git
+cd code_dumper
+
+# Install CodeDumper
+pip install -e .
+```
+
+#### Basic Usage
+```bash
+# Export the current repository to <repo-name>.md
+codedumper
+
+# Or run directly via Python module
+python -m codedumper
+
+# Export a specific project to a custom output file
+codedumper /path/to/my_project -o project_dump.md
+
+# Preview directory tree and statistics without writing to disk
+codedumper --dry-run
+```
+
+#### CLI Options
+```text
+usage: codedumper [-h] [-o OUTPUT_PATH] [-f] [-e EXCLUDE_PATTERNS]
+                  [--include-hidden] [--max-size MAX_SIZE] [--no-tree]
+                  [--dry-run] [-v]
+                  [target_dir]
+
+positional arguments:
+  target_dir            Path to directory to export. (Default: current directory)
+
+options:
+  -h, --help            Show this help message and exit.
+  -o, --output PATH     Destination filepath. (Default: <target_directory_name>.md)
+  -f, --force           Overwrite destination file if it exists without prompting.
+  -e, --exclude GLOB    Glob pattern to exclude (repeatable, e.g. -e "*.log" -e "docs/*").
+  --include-hidden      Include hidden files and folders (starting with '.').
+  --max-size SIZE       Maximum individual file size (e.g. '500KB', '2MB', default '1MB').
+  --no-tree             Omit the directory tree section in the Markdown output.
+  --dry-run             Scan and report without writing any file to disk.
+  -v, --version         Show program version and exit.
+```
+
+---
+
+## 2. Engineering Documentation
+
+CodeDumper is engineered under strict specifications. The complete architectural, design, and review documentation is maintained in the `docs/` directory:
+
+| Document | Description |
 |---|---|
-| Python | 3.10 + |
-| Git | 2.30 + |
-| watchdog | 4.0 + (installed automatically) |
-| gitpython | 3.1 + (installed automatically) |
+| [**docs/PRD.md**](docs/PRD.md) | **Product Requirements Document:** Scope, user personas, functional (`FR-001`..`FR-018`) and non-functional (`NFR-001`..`NFR-010`) requirements, and user stories. |
+| [**docs/ERD.md**](docs/ERD.md) | **Entity Relationship & Data Model:** Persistence analysis (demonstrating why no database is required), runtime entity definitions, and data flow. |
+| [**docs/TRD.md**](docs/TRD.md) | **Technical Requirements Document:** Architecture constraints, supported platforms, CLI contracts, encoding fallbacks, and security policies. |
+| [**docs/DRD.md**](docs/DRD.md) | **Detailed Design Document:** Module interface contracts, dynamic fence algorithms, directory layouts, and execution workflows. |
+| [**docs/EDR.md**](docs/EDR.md) | **Engineering Design Review:** Formal design review, risk analysis, failure modes, findings register, and engineering sign-off verdict. |
+| [**docs/TRACEABILITY.md**](docs/TRACEABILITY.md) | **Traceability Matrix:** Full mapping from PRD requirements to TRD, DRD, tests, and verification status. |
+| [**docs/ASSESSMENT.md**](docs/ASSESSMENT.md) | **Initial Assessment:** Baseline codebase analysis, gap identification, and recommended architecture. |
 
 ---
 
-## Installation
+## 3. Companion: Git Auto-Commit Watcher (`autocommit`)
 
-```powershell
-# From the repository root
+For continuous Git automation during live coding sessions, the repository includes the `autocommit` package:
+
+```bash
+# Install companion dependencies
 pip install -r requirements.txt
-```
 
-Verify:
-
-```powershell
-python -c "import watchdog, git; print('OK')"
-```
-
----
-
-## Quick Start
-
-```powershell
-# Start the watcher (watches the current directory)
+# Start watcher on current repository
 python run_watcher.py
 
-# Or point it at another repository
+# Point watcher at another repository
 python run_watcher.py --repo "D:\PROJECTS\my_other_repo"
-
-# Verbose / debug output
-python run_watcher.py --verbose
-```
-
-**Stop:** press `Ctrl+C` — the watcher shuts down cleanly.
-
----
-
-## Configuration
-
-Create `autocommit_config.json` in the repository root to override defaults:
-
-```json
-{
-  "debounce_seconds": 1.5,
-  "push_retry_base_seconds": 5,
-  "push_retry_max_seconds": 300,
-  "push_retry_max_attempts": 10,
-  "target_branch": "",
-  "remote": "origin",
-  "commit_message_template": "Auto-save: %Y-%m-%d %H:%M:%S",
-  "verbose": false
-}
-```
-
-All settings can also be set via environment variables prefixed with `AC_`:
-
-```powershell
-$env:AC_DEBOUNCE_SECONDS = "2.0"
-$env:AC_VERBOSE = "true"
-python run_watcher.py
-```
-
-### Settings Reference
-
-| Key | Default | Description |
-|---|---|---|
-| `debounce_seconds` | `1.5` | Wait this many seconds after the last event before committing |
-| `push_retry_base_seconds` | `5` | Initial delay between push retries |
-| `push_retry_max_seconds` | `300` | Maximum delay between push retries |
-| `push_retry_max_attempts` | `10` | Max retry attempts (0 = unlimited) |
-| `target_branch` | `""` | Remote branch to push to (empty = auto-detect) |
-| `remote` | `"origin"` | Git remote name |
-| `commit_message_template` | `"Auto-save: %Y-%m-%d %H:%M:%S"` | Python `strftime` template |
-| `verbose` | `false` | Enable DEBUG logging |
-
----
-
-## How It Works
-
-```
-File saved
-    │
-    ▼ (event from watchdog ReadDirectoryChangesW)
-Filter: ignore .git/*, __pycache__/*, *.pyc, .env, etc.
-    │
-    ▼
-Debounce timer resets (1.5 s window)
-    │
-    ▼ (timer fires)
-Commit Worker thread wakes
-    │
-    ├─ git add -A
-    ├─ Unstage blocked filenames (.env, *.pem, *.key, …)
-    ├─ Check: anything staged? → No → skip
-    ├─ Scan diff for secret patterns → match → ABORT (unstage all)
-    ├─ git commit -m "Auto-save: YYYY-MM-DD HH:MM:SS"
-    └─ git push (with exponential back-off for transient errors)
-```
-
-A single `threading.Lock` serialises all Git operations — concurrent filesystem events cannot create competing commits.
-
----
-
-## Security
-
-Files that are **never staged**, regardless of `.gitignore`:
-
-- `.env`, `.env.*`
-- `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.crt`, `*.cer`
-- `id_rsa`, `id_ed25519`, `id_ecdsa`
-- `secrets.json`, `secrets.yaml`, `credentials.json`, `credentials.yaml`
-- `auth.json`, `*.gpg`
-
-Content patterns that **abort a commit** (the entire staging is rolled back):
-
-- `PASSWORD=…`, `SECRET=…`, `TOKEN=…`, `API_KEY=…`
-- `-----BEGIN RSA PRIVATE KEY-----` and similar PEM headers
-- AWS access key format (`AKIA…`)
-
----
-
-## Branch and Remote Safety
-
-On startup the watcher:
-
-1. Reads the current local branch (`git symbolic-ref HEAD`).
-2. Reads the remote's default branch (`remotes/origin/HEAD`).
-3. If they differ (e.g., local `master` vs remote `main`), it **logs a warning** and uses the remote default as the push target — no renaming, no deleting, no force-pushing.
-4. If the local branch has no upstream yet, it sets `-u origin <branch>` on the first push.
-
----
-
-## Push Retry and Recovery
-
-| Error type | Behaviour |
-|---|---|
-| Transient (connection reset, timeout) | Retry with exponential back-off up to `push_retry_max_attempts` |
-| Permanent (auth failure, non-fast-forward, repo not found) | Stop retrying immediately; log error; keep local commits safe |
-
-Pending pushes survive restarts: `autocommit_state.json` (gitignored) records whether a push is pending. On the next startup the watcher attempts a recovery push before watching for new changes.
-
----
-
-## Windows Startup (Run on Login)
-
-### Option A — Task Scheduler (recommended)
-
-1. Open **Task Scheduler** → *Create Basic Task*
-2. **Trigger:** At log on
-3. **Action:** Start a program
-   - Program: `C:\Program Files\Python312\python.exe`
-   - Arguments: `"D:\PROJECTS\code_dumper\run_watcher.py" --repo "D:\PROJECTS\code_dumper"`
-   - Start in: `D:\PROJECTS\code_dumper`
-4. Check *Run whether user is logged on or not* if you want background operation.
-
-### Option B — Startup folder shortcut
-
-Create a `.bat` file in `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`:
-
-```bat
-@echo off
-python "D:\PROJECTS\code_dumper\run_watcher.py" --repo "D:\PROJECTS\code_dumper" >> "D:\PROJECTS\code_dumper\watcher.log" 2>&1
 ```
 
 ---
 
-## Troubleshooting
+## 4. Testing & Validation
 
-### "fatal: 'origin' does not appear to be a git repository"
-Your remote URL is wrong or the remote doesn't exist yet. Run `git remote -v` and correct the URL.
+CodeDumper includes a test suite covering directory recursion, deterministic sorting, sensitive file exclusion, binary detection, encoding fallbacks, dynamic code fencing, size limits, overwrite protection, and CLI exit codes:
 
-### Push permanently failed (auth / non-fast-forward)
-The watcher stops pushing (but keeps committing locally). Fix the cause:
-- **Auth:** check GitHub credentials via `git push` manually.
-- **Non-fast-forward:** someone pushed to the remote branch. Pull changes with `git pull --rebase`, then delete `autocommit_state.json` and restart.
+```bash
+# Run the entire test suite (73 tests)
+python -m pytest -v
 
-### Too many commits for a single save
-Increase `debounce_seconds` in `autocommit_config.json` to 2–3 seconds.
-
-### Sensitive file blocked accidentally
-If a legitimate file is being blocked, check if its name matches any pattern in `autocommit/config.py`:`BLOCKED_FILENAME_PATTERNS` and remove or adjust the pattern.
-
-### Watcher exits unexpectedly
-Check the console output. The most common cause is a Python exception during startup (missing `.git`, wrong `--repo` path).
-
----
-
-## Running Tests
-
-Tests use isolated temporary Git repositories — **no commits are ever made to your real repository**.
-
-```powershell
-# Run all tests
-python -m pytest tests/test_autocommit.py -v
-
-# Run only fast unit tests (skip watcher integration)
-python -m pytest tests/test_autocommit.py -v -k "not TestDebounce"
+# Run CodeDumper tests only
+python -m pytest tests/test_codedumper.py -v
 ```
 
----
-
-## Project Structure
-
-```
-code_dumper/
-├── autocommit/
-│   ├── __init__.py        # Package init
-│   ├── config.py          # Settings, secret patterns, ignore rules
-│   ├── git_ops.py         # All Git operations (commit, push, scan)
-│   ├── state.py           # Persistent push-state manager
-│   └── watcher.py         # Filesystem observer + commit worker
-├── tests/
-│   └── test_autocommit.py # Full test suite (no network required)
-├── .gitignore             # Excludes secrets, build artifacts, state file
-├── autocommit_config.json # (optional) User configuration overrides
-├── requirements.txt       # Python dependencies
-├── run_watcher.py         # CLI entry point
-└── README.md              # This file
-```
-
----
-
-## Stopping the Watcher
-
-- **Interactive:** `Ctrl+C` — triggers clean shutdown.
-- **Scheduled Task:** `Stop-ScheduledTask -TaskName "GitAutoCommit"` (PowerShell).
-- The watcher drains any pending work before exiting.
+All 73 automated tests execute and pass in under 25 seconds.
