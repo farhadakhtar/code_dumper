@@ -42,8 +42,7 @@ def render_markdown(config: ScanConfig, result: ScanResult) -> str:
     parts.append(f"| **Files Dumped** | {len(result.included_files)} |")
     parts.append(f"| **Total Source Size** | {format_size(result.total_included_bytes)} |")
     parts.append(f"| **Total Lines** | {result.total_lines:,} |")
-    parts.append(f"| **Files Omitted** | {len(result.omitted_files)} |")
-    parts.append(f"| **Scan Duration** | {result.elapsed_seconds:.2f} seconds |\n")
+    parts.append(f"| **Files Omitted** | {len(result.omitted_files)} |\n")
 
     # Table of Contents
     if result.included_files:

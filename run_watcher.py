@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import shutil
 import sys
 from pathlib import Path
 
@@ -42,6 +43,11 @@ def main() -> None:
         action="store_true",
         help="Enable verbose/debug logging",
     )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to a JSON config file (copied to <repo>/autocommit_config.json)",
+    )
     args = parser.parse_args()
 
     _setup_logging(args.verbose)
@@ -57,6 +63,18 @@ def main() -> None:
             "%s is not a Git repository (no .git directory found).", repo_root
         )
         sys.exit(1)
+
+    if args.config:
+        config_src = Path(args.config).resolve()
+        if not config_src.is_file():
+            log.error("Config file does not exist: %s", config_src)
+            sys.exit(1)
+        try:
+            shutil.copyfile(config_src, repo_root / "autocommit_config.json")
+            log.info("Copied config %s -> %s", config_src, repo_root / "autocommit_config.json")
+        except OSError as exc:
+            log.error("Could not copy config file: %s", exc)
+            sys.exit(1)
 
     # Late import so logging is configured first
     from autocommit.watcher import AutoCommitWatcher
