@@ -1,4 +1,11 @@
-"""Command Line Interface (CLI) entry point for CodeDumper."""
+"""Command Line Interface (CLI) entry point for CodeDumper.
+
+Implements the README contract:
+
+- Bare ``codedumper`` launches the interactive ``CODEDUMPER CLI`` menu.
+- ``codedumper dump [PATH] [OPTIONS]`` is the primary non-interactive form.
+- ``codedumper [PATH] [OPTIONS]`` (legacy direct form) keeps working.
+"""
 
 import argparse
 import re
@@ -13,6 +20,28 @@ from codedumper.renderer import render_markdown
 from codedumper.reporter import format_cli_summary
 from codedumper.scanner import scan_repository
 from codedumper.writer import write_dump_file
+
+
+BANNER = r"""
+   ____          _      ____
+  / ___|___   __| | ___|  _ \ _   _ _ __ ___  _ __   ___ _ __
+ | |   / _ \ / _` |/ _ \ | | | | | | '_ ` _ \| '_ \ / _ \ '__|
+ | |__| (_) | (_| |  __/ |_| | |_| | | | | | | |_) |  __/ |
+  \____\___/ \__,_|\___|____/ \__,_|_| |_| |_| .__/ \___|_|
+                                             |_|
+
+                  CODEDUMPER CLI
+          Turn your codebase into Markdown.
+
+  1. Dump the current project
+  2. Dump another project
+  3. Preview project contents
+  4. Configure exclusions
+  5. Help and documentation
+  6. Exit
+"""
+
+MENU_PROMPT = "Select an option [1-6]: "
 
 
 def parse_size_str(val: str) -> int:
@@ -37,36 +66,21 @@ def parse_size_str(val: str) -> int:
         raise ValueError(f"Unsupported size unit in: '{val}'")
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """Construct argument parser for codedumper CLI."""
-    parser = argparse.ArgumentParser(
-        prog="codedumper",
-        description="Export a codebase into a single, clean Markdown document for AI coding assistants.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-
-    parser.add_argument(
-        "target_dir",
-        nargs="?",
-        default=".",
-        help="Path to the repository or directory to export. (Default: current working directory)",
-    )
-
+def _add_dump_options(parser: argparse.ArgumentParser) -> None:
+    """Attach the shared dump options to a parser (dump subcommand or legacy)."""
     parser.add_argument(
         "-o",
         "--output",
         dest="output_path",
         default=None,
-        help="Destination filepath for the generated Markdown dump. (Default: <target_directory_name>.md)",
+        help="Destination filepath for the generated Markdown dump. (Default: <project_directory_name>.md)",
     )
-
     parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         help="Overwrite destination file if it already exists without prompt.",
     )
-
     parser.add_argument(
         "-e",
         "--exclude",
@@ -75,29 +89,38 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help="Glob pattern to exclude (can be specified multiple times, e.g. -e '*.log' -e 'docs/*').",
     )
-
     parser.add_argument(
         "--include-hidden",
         action="store_true",
-        help="Include hidden files and directories (names starting with '.').",
+        help="Include hidden files and directories (names starting with '.'). Sensitive files stay excluded.",
     )
-
     parser.add_argument(
+        "--max-file-size",
         "--max-size",
+        dest="max_size",
         default="1MB",
-        help="Maximum individual file size to include in the dump. (Default: 1MB)",
+        help="Maximum individual file size to include in the dump (e.g. '500KB', '2MB'). (Default: 1MB)",
     )
-
     parser.add_argument(
         "--no-tree",
         action="store_true",
-        help="Suppress the directory tree section in the generated Markdown output.",
+        help="Suppress the Project Structure tree section in the generated Markdown output.",
     )
-
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Scan and report without writing any file to disk.",
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Construct argument parser for codedumper CLI."""
+    parser = argparse.ArgumentParser(
+        prog="codedumper",
+        description="Turn any codebase into one organized Markdown document.\n\n"
+        "Run with no arguments to launch the interactive menu, or use "
+        "'codedumper dump [PATH] [OPTIONS]' for non-interactive export.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(
@@ -107,25 +130,46 @@ def build_parser() -> argparse.ArgumentParser:
         version=f"%(prog)s {codedumper.__version__}",
     )
 
+    subparsers = parser.add_subparsers(dest="command", metavar="command")
+
+    dump_parser = subparsers.add_parser(
+        "dump",
+        help="Export a project directory to a Markdown file.",
+        description="Export a project directory to a single, organized Markdown document.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dump_parser.add_argument(
+        "dump_path",
+        nargs="?",
+        default=".",
+        help="Path to the project directory to export. (Default: current working directory)",
+    )
+    _add_dump_options(dump_parser)
+
+    # Legacy direct form: `codedumper [TARGET_DIR] [OPTIONS]`
+    parser.add_argument(
+        "target_dir",
+        nargs="?",
+        default=None,
+        help="Path to the repository or directory to export. (Default: current working directory)",
+    )
+    _add_dump_options(parser)
+
     return parser
 
 
-def main(args: Optional[List[str]] = None) -> int:
-    """Main CLI execution routine."""
-    # Register SIGINT handler
-    def _sigint_handler(signum, frame):
-        print("\nOperation canceled by user.", file=sys.stderr)
-        sys.exit(130)
-
-    try:
-        signal.signal(signal.SIGINT, _sigint_handler)
-    except (ValueError, AttributeError):
-        pass  # In certain non-main threads or environments signal cannot be registered
-
-    parser = build_parser()
-    parsed_args = parser.parse_args(args)
-
-    target_path = Path(parsed_args.target_dir).resolve()
+def execute_dump(
+    target_dir: str,
+    output_path: Optional[str] = None,
+    force: bool = False,
+    exclude_patterns: Optional[List[str]] = None,
+    include_hidden: bool = False,
+    max_size: str = "1MB",
+    no_tree: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Run one full scan-and-export cycle. Returns the process exit code."""
+    target_path = Path(target_dir).resolve()
     if not target_path.exists():
         print(f"Error: Target directory does not exist: '{target_path}'", file=sys.stderr)
         return 1
@@ -135,22 +179,22 @@ def main(args: Optional[List[str]] = None) -> int:
         return 1
 
     try:
-        max_size_bytes = parse_size_str(parsed_args.max_size)
+        max_size_bytes = parse_size_str(max_size)
         if max_size_bytes <= 0:
-            raise ValueError("Max size must be greater than zero.")
+            raise ValueError("Max file size must be greater than zero.")
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
     # Determine default output path if not explicitly provided
-    if parsed_args.output_path:
-        output_file = Path(parsed_args.output_path).resolve()
+    if output_path:
+        output_file = Path(output_path).resolve()
     else:
         dir_name = target_path.name or "repository"
         output_file = Path(f"{dir_name}.md").resolve()
 
     # Pre-flight check: destination existence
-    if not parsed_args.dry_run and output_file.exists() and not parsed_args.force:
+    if not dry_run and output_file.exists() and not force:
         print(
             f"Error: Destination file already exists: '{output_file}'. Use --force (-f) to overwrite.",
             file=sys.stderr,
@@ -161,13 +205,15 @@ def main(args: Optional[List[str]] = None) -> int:
         target_dir=target_path,
         output_path=output_file,
         max_size_bytes=max_size_bytes,
-        include_hidden=parsed_args.include_hidden,
-        exclude_patterns=parsed_args.exclude_patterns or [],
-        force=parsed_args.force,
-        dry_run=parsed_args.dry_run,
-        no_tree=parsed_args.no_tree,
+        include_hidden=include_hidden,
+        exclude_patterns=exclude_patterns or [],
+        force=force,
+        dry_run=dry_run,
+        no_tree=no_tree,
     )
 
+    print(f"[INFO] Project: {config.target_dir.name}")
+    print("[INFO] Scanning directory...")
     try:
         result = scan_repository(config)
     except PermissionError as e:
@@ -176,6 +222,8 @@ def main(args: Optional[List[str]] = None) -> int:
     except OSError as e:
         print(f"Filesystem Error: {e}", file=sys.stderr)
         return 2
+    print("[INFO] Applying exclusion rules...")
+    print("[INFO] Collecting eligible files...")
 
     # Render Markdown
     markdown_content = render_markdown(config, result)
@@ -196,6 +244,142 @@ def main(args: Optional[List[str]] = None) -> int:
     print(summary_output)
 
     return 0
+
+
+def run_interactive_menu() -> int:
+    """Launch the interactive CODEDUMPER CLI menu. Returns the exit code."""
+    print(BANNER)
+    session_excludes: List[str] = []
+
+    while True:
+        try:
+            choice = input(MENU_PROMPT).strip()
+        except EOFError:
+            print()
+            return 0
+        except KeyboardInterrupt:
+            print("\nOperation canceled by user.", file=sys.stderr)
+            return 130
+
+        if choice == "1":
+            rc = _menu_dump(".", session_excludes)
+            if rc != 0:
+                print(f"[INFO] Dump finished with exit code {rc}.")
+        elif choice == "2":
+            try:
+                path = input("Enter the project path: ").strip()
+            except EOFError:
+                print()
+                return 0
+            except KeyboardInterrupt:
+                print("\nOperation canceled by user.", file=sys.stderr)
+                return 130
+            if not path:
+                print("No path entered. Returning to the menu.")
+                continue
+            rc = _menu_dump(path, session_excludes)
+            if rc != 0:
+                print(f"[INFO] Dump finished with exit code {rc}.")
+        elif choice == "3":
+            execute_dump(".", dry_run=True, exclude_patterns=list(session_excludes))
+        elif choice == "4":
+            try:
+                raw = input("Enter extra glob patterns, comma-separated (e.g. *.log, docs/*): ").strip()
+            except EOFError:
+                print()
+                return 0
+            except KeyboardInterrupt:
+                print("\nOperation canceled by user.", file=sys.stderr)
+                return 130
+            new_patterns = [p.strip() for p in raw.split(",") if p.strip()]
+            if new_patterns:
+                session_excludes.extend(new_patterns)
+                print(f"[INFO] Added {len(new_patterns)} exclusion pattern(s) for this session.")
+            else:
+                print("[INFO] No patterns entered; session exclusions unchanged.")
+        elif choice == "5":
+            print(build_parser().format_help())
+        elif choice == "6":
+            print("Goodbye!")
+            return 0
+        else:
+            print(f"Invalid choice: '{choice}'. Please select an option [1-6].")
+
+
+def _menu_dump(path: str, session_excludes: List[str]) -> int:
+    """Dump helper for menu options 1/2 with overwrite confirmation."""
+    target_path = Path(path).resolve()
+    if not target_path.exists() or not target_path.is_dir():
+        print(f"Error: Target directory is not valid: '{target_path}'", file=sys.stderr)
+        return 1
+    dir_name = target_path.name or "repository"
+    default_output = Path(f"{dir_name}.md").resolve()
+    if default_output.exists():
+        try:
+            answer = input(f"Output file '{default_output}' already exists. Overwrite? [y/N]: ").strip().lower()
+        except EOFError:
+            print()
+            return 1
+        except KeyboardInterrupt:
+            print("\nOperation canceled by user.", file=sys.stderr)
+            return 130
+        if answer not in ("y", "yes"):
+            print("[INFO] Dump canceled; existing file preserved.")
+            return 0
+        return execute_dump(path, force=True, exclude_patterns=list(session_excludes))
+    return execute_dump(path, exclude_patterns=list(session_excludes))
+
+
+def main(args: Optional[List[str]] = None) -> int:
+    """Main CLI execution routine."""
+    # Register SIGINT handler
+    def _sigint_handler(signum, frame):
+        print("\nOperation canceled by user.", file=sys.stderr)
+        sys.exit(130)
+
+    try:
+        signal.signal(signal.SIGINT, _sigint_handler)
+    except (ValueError, AttributeError):
+        pass  # In certain non-main threads or environments signal cannot be registered
+
+    if args is None:
+        args = sys.argv[1:]
+
+    # Bare invocation launches the interactive menu.
+    if len(args) == 0:
+        try:
+            return run_interactive_menu()
+        except KeyboardInterrupt:
+            print("\nOperation canceled by user.", file=sys.stderr)
+            return 130
+
+    parser = build_parser()
+    parsed_args = parser.parse_args(args)
+
+    if parsed_args.command == "dump":
+        return execute_dump(
+            target_dir=parsed_args.dump_path,
+            output_path=parsed_args.output_path,
+            force=parsed_args.force,
+            exclude_patterns=parsed_args.exclude_patterns or [],
+            include_hidden=parsed_args.include_hidden,
+            max_size=parsed_args.max_size,
+            no_tree=parsed_args.no_tree,
+            dry_run=parsed_args.dry_run,
+        )
+
+    # Legacy direct form.
+    target = parsed_args.target_dir or "."
+    return execute_dump(
+        target_dir=target,
+        output_path=parsed_args.output_path,
+        force=parsed_args.force,
+        exclude_patterns=parsed_args.exclude_patterns or [],
+        include_hidden=parsed_args.include_hidden,
+        max_size=parsed_args.max_size,
+        no_tree=parsed_args.no_tree,
+        dry_run=parsed_args.dry_run,
+    )
 
 
 if __name__ == "__main__":
