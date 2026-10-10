@@ -269,10 +269,9 @@ def test_scan_repository_comprehensive(sample_project: Path):
     # Render Markdown
     md = render_markdown(config, result)
     assert "# Codebase Dump: my_project" in md
-    assert "## Table of Contents" in md
-    assert "## Directory Tree" in md
-    assert "## Repository Files" in md
-    assert "## Omission Manifest" in md
+    assert "## Project Structure" in md
+    assert "## File: src/main.py" in md
+    assert "## Excluded Files" in md
 
     # Check dynamic fencing for tutorial.md
     assert "````markdown" in md or "````" in md
