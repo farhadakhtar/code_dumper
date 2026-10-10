@@ -125,6 +125,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="Turn any codebase into one organized Markdown document.\n\n"
         "Run with no arguments to launch the interactive menu, or use "
         "'codedumper dump [PATH] [OPTIONS]' for non-interactive export.",
+        epilog="Examples:\n"
+        "  codedumper\n"
+        "  codedumper dump ./my-project\n"
+        '  codedumper dump ./my-project --output ./exports/codebase.md\n'
+        "  codedumper dump ./my-project --dry-run\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
