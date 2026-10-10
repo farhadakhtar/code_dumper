@@ -1,0 +1,19 @@
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\logging\__init__.py", line 1163, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Program Files\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 72: character maps to <undefined>
+Call stack:
+  File "D:\PROJECTS\code_dumper\run_watcher.py", line 87, in <module>
+    main()
+  File "D:\PROJECTS\code_dumper\run_watcher.py", line 83, in main
+    watcher.run_until_interrupted()
+  File "D:\PROJECTS\code_dumper\autocommit\watcher.py", line 364, in run_until_interrupted
+    self.start()
+  File "D:\PROJECTS\code_dumper\autocommit\watcher.py", line 312, in start
+    log.info(
+Message: "Watching branch '%s' \u2192 remote '%s/%s'"
+Arguments: ('main', 'origin', 'main')
