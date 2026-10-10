@@ -1,201 +1,261 @@
 # Detailed Design Document (DRD): CodeDumper
 
-**Document Version:** 1.0.0  
-**Status:** Approved  
-**Author:** Engineering Team  
-**File:** `docs/DRD.md`  
+**Document Version:** 2.0.0
+**Status:** Approved
+**Author:** Engineering Team
+**Source of Truth:** `README.md` + `docs/PRD.md` + `docs/TRD.md` (v2.0.0)
+**File:** `docs/DRD.md`
 
 ---
 
 ## 1. Architecture Overview
 
-CodeDumper is engineered as a clean, modular Unix-philosophy pipeline:
+```text
+ bare `codedumper` ──▶ interactive menu ──▶ ScanConfig ──┐
+ `codedumper dump …` ──▶ subcommand parser ──▶ ScanConfig ─┤
+ legacy `codedumper …` ──▶ legacy parser ──▶ ScanConfig ───┘
+                                                        ▼
+ Scanner ──▶ Filter Engine ──▶ Classifier ──▶ Tree Builder ──▶ Markdown Renderer ──▶ Atomic Writer ──▶ Reporter
 ```
-CLI Args -> Configuration -> Scanner -> Filter Engine -> Classifier -> Tree Builder -> Markdown Renderer -> Atomic Writer -> Report
-```
-Every phase is encapsulated in an isolated module with single responsibility, explicit type contracts, zero global state, and testable interfaces.
+
+Single-responsibility modules, one-way data flow through immutable
+dataclasses, zero global state, zero runtime third-party imports. Per README
+("do not create unnecessary modules"), the suggested `exporter/exclusions/
+safety/config.py` files are **not** created; their responsibilities map onto
+existing modules (§3.8).
 
 ---
 
 ## 2. Directory Structure
 
-The repository structure cleanly accommodates both the new `codedumper` package and the complementary `autocommit` package:
-
-```
+```text
 code_dumper/
-├── .gitignore
-├── pyproject.toml              # Modern build configuration and CLI entry points
-├── requirements.txt            # Base development and testing dependencies
-├── Readme.md                   # Primary project user guide & quickstart
-├── codedumper/                 # Core CodeDumper package
-│   ├── __init__.py             # Version metadata
-│   ├── __main__.py             # Enables python -m codedumper execution
-│   ├── cli.py                  # CLI argument parsing and process orchestration
-│   ├── models.py               # Immutable dataclasses and domain entities
-│   ├── scanner.py              # Recursive deterministic filesystem traversal
-│   ├── filter.py               # Multi-tier exclusion engine (noise, secrets, globs)
-│   ├── classifier.py           # Text vs. binary detection and syntax tagging
-│   ├── tree.py                 # Hierarchical ASCII/Unicode directory tree renderer
-│   ├── renderer.py             # Markdown serialization with dynamic code fencing
-│   ├── writer.py               # Atomic filesystem writer with overwrite guards
-│   └── reporter.py             # Execution statistics and omission manifest formatting
-├── autocommit/                 # Preserved companion git-automation package
-│   ├── __init__.py
-│   ├── config.py
-│   ├── git_ops.py
-│   ├── state.py
-│   └── watcher.py
-├── docs/                       # Formal engineering specification documents
-│   ├── ASSESSMENT.md           # Initial repository assessment
-│   ├── PRD.md                  # Product Requirements Document
-│   ├── ERD.md                  # Entity Relationship Diagram & Data Model
-│   ├── TRD.md                  # Technical Requirements Document
-│   ├── DRD.md                  # Detailed Design Document (this file)
-│   ├── EDR.md                  # Engineering Design Review
-│   └── TRACEABILITY.md         # Requirements Traceability Matrix
-└── tests/                      # Automated test suite
-    ├── __init__.py
-    ├── test_autocommit.py      # Regression tests for auto-commit package
-    └── test_codedumper.py      # Comprehensive unit & integration tests for CodeDumper
+├── LICENSE                       # MIT license text (NFR-011)
+├── README.md                       # normative user contract
+├── pyproject.toml                  # build + `codedumper` entry point
+├── requirements.txt                # dev/companion pins
+├── run_watcher.py                  # companion launcher (untouched contract + --config)
+├── codedumper/
+│   ├── __init__.py                 # version + public exports
+│   ├── __main__.py                 # `python -m codedumper`
+│   ├── cli.py                      # menu + dump/legacy parsers + orchestration (TR-001/002/007/009/010/012)
+│   ├── models.py                   # ScanConfig / FileItem / OmissionRecord / ScanResult
+│   ├── scanner.py                  # sorted recursion + ingestion (TR-003)
+│   ├── filter.py                   # precedence chain (TR-008)
+│   ├── classifier.py               # binary/language/encoding (TR-006)
+│   ├── tree.py                     # Project Structure tree (TR-004)
+│   ├── renderer.py                 # Markdown: title/tree/File sections/Excluded Files (TR-005/011)
+│   ├── writer.py                   # atomic write + overwrite guard (TR-009)
+│   └── reporter.py                 # console summary (TR-011)
+├── autocommit/                     # preserved companion (out of CodeDumper scope)
+├── docs/                           # PRD/ERD/TRD/DRD/EDR/TRACEABILITY/ASSESSMENT
+└── tests/
+    ├── test_codedumper.py          # engine + legacy CLI tests
+    └── test_codedumper_contract.py # v2 contract: dump/menu/format tests
 ```
 
 ---
 
 ## 3. Module Design & Contracts
 
-### 3.1 `codedumper.models`
-- **Responsibility:** Defines domain dataclasses and enumerations.
-- **Key Entities:**
-  - `ScanConfig`: Immutable configuration container (`target_dir`, `output_path`, `max_size_bytes`, `include_hidden`, `exclude_patterns`, `force`, `dry_run`, `no_tree`).
-  - `FileItem`: Represents a candidate file (`path: Path`, `rel_path: str`, `size: int`, `is_text: bool`, `language: str`).
-  - `OmissionRecord`: Represents an excluded item (`rel_path: str`, `reason: str`, `size: int`).
-  - `ScanResult`: Aggregated result (`included_files: List[FileItem]`, `omitted_files: List[OmissionRecord]`, `tree_text: str`, `elapsed_seconds: float`).
+### 3.1 `models` — domain entities
 
-### 3.2 `codedumper.filter`
-- **Responsibility:** Implements exclusion rules and precedence logic.
-- **Signatures:**
-  ```python
-  class ExclusionEngine:
-      def __init__(self, user_patterns: List[str], include_hidden: bool = False): ...
-      def should_skip_directory(self, dir_name: str, rel_path: str) -> Optional[str]: ...
-      def should_skip_file(self, file_name: str, rel_path: str, file_size: int, max_size: int) -> Optional[str]: ...
-  ```
-- **Rules Precedence:**
-  1. Sensitive file patterns (`.env*`, `*.pem`, `*.key`, `id_rsa*`) -> Reason: `SENSITIVE_CREDENTIAL`
-  2. Built-in build/VCS noise (`.git`, `node_modules`, `dist`, `__pycache__`) -> Reason: `DEFAULT_NOISE`
-  3. Hidden path segment (`.*`) -> Reason: `HIDDEN_FILE` (if `include_hidden=False`)
-  4. User custom glob match -> Reason: `USER_EXCLUDE_PATTERN`
-  5. File size exceeds threshold -> Reason: `EXCEEDS_MAX_SIZE`
+```python
+@dataclass(frozen=True)
+class ScanConfig:
+    target_dir: Path
+    output_path: Path
+    max_size_bytes: int = 1_048_576
+    include_hidden: bool = False
+    exclude_patterns: list[str] = field(default_factory=list)
+    force: bool = False
+    dry_run: bool = False
+    no_tree: bool = False
 
-### 3.3 `codedumper.classifier`
-- **Responsibility:** Differentiates text files from binary files; resolves syntax highlight tags.
-- **Signatures:**
-  ```python
-  def is_binary_file(file_path: Path, sample_size: int = 8192) -> bool: ...
-  def detect_language(file_path: Path) -> str: ...
-  def read_text_safely(file_path: Path) -> Tuple[str, str]: ...
-  ```
-- **Algorithm:**
-  - Read up to 8,192 bytes.
-  - If null byte `b'\x00'` exists in sample, classify as binary.
-  - Compute non-text byte ratio (bytes not in ASCII printable, newline, CR, tab, or valid UTF-8 lead sequences). If > 30%, classify as binary.
-  - Text reading attempts `utf-8`; falls back to `utf-8` with `errors='replace'` or `latin-1`.
+@dataclass(frozen=True)
+class FileItem:
+    path: Path; rel_path: str; size: int
+    content: str; language: str; line_count: int
 
-### 3.4 `codedumper.tree`
-- **Responsibility:** Generates an ASCII/Unicode hierarchy tree showing directory structure.
-- **Signature:**
-  ```python
-  def generate_directory_tree(root_dir: Path, filter_engine: ExclusionEngine) -> str: ...
-  ```
-- **Formatting:** Uses standard branch glyphs (`├── `, `└── `, `│   `). Preserves alphabetical sorting.
+@dataclass(frozen=True)
+class OmissionRecord:
+    rel_path: str; reason: str; size: int = 0
 
-### 3.5 `codedumper.renderer`
-- **Responsibility:** Generates Markdown content with dynamic code fence sizing.
-- **Signature:**
-  ```python
-  def calculate_code_fence(content: str) -> str: ...
-  def render_markdown(config: ScanConfig, scan_result: ScanResult) -> str: ...
-  ```
-- **Fence Algorithm:**
-  Scans `content` for consecutive backticks. If max consecutive count is `k`, uses `max(3, k + 1)` backticks for enclosing fence. For example, if file contains ```` ```python ````, fence uses ```` ```` ````.
+@dataclass
+class ScanResult:
+    project_name: str; target_dir: Path
+    included_files: list[FileItem] = field(default_factory=list)
+    omitted_files: list[OmissionRecord] = field(default_factory=list)
+    tree_text: str = ""
+    elapsed_seconds: float = 0.0      # console-only; never rendered to file
+    total_files_discovered: int = 0
+```
 
-### 3.6 `codedumper.writer`
-- **Responsibility:** Manages safe atomic disk writes and overwrite protection.
-- **Signature:**
-  ```python
-  def write_dump_file(output_path: Path, content: str, force: bool = False) -> None: ...
-  ```
-- **Algorithm:**
-  - If `output_path.exists()` and not `force`, raises `FileExistsError`.
-  - Creates parent directories if missing (`output_path.parent.mkdir(parents=True, exist_ok=True)`).
-  - Writes to temporary file: `output_path.with_name(f".tmp.{os.getpid()}.{output_path.name}")`.
-  - Uses `os.replace(temp_path, output_path)` for atomic replacement.
-  - On exception, unlinks temp file.
+### 3.2 `filter` — precedence engine (TR-008)
 
-### 3.7 `codedumper.cli`
-- **Responsibility:** Entry point parsing arguments, handling signals, coordinating pipeline, formatting terminal output, and returning exit codes.
-- **Signature:**
-  ```python
-  def main(args: Optional[List[str]] = None) -> int: ...
-  ```
+```python
+class ExclusionEngine:
+    def __init__(self, user_patterns: list[str] | None = None,
+                 include_hidden: bool = False): ...
+    def should_skip_directory(self, dir_name: str, rel_path: str) -> str | None: ...
+    def should_skip_file(self, file_name: str, rel_path: str,
+                         file_size: int, max_size_bytes: int) -> str | None: ...
+```
+
+Order: sensitive → default noise → hidden → user globs → size.
+(Binary/encoding is the classifier's gate, applied after.)
+
+### 3.3 `classifier` — safety checks (TR-006)
+
+```python
+def is_binary_file(file_path: Path, sample_size: int = 8192) -> bool: ...
+def detect_language(file_path: Path) -> str: ...   # ext map, fallback "text"
+def read_text_safely(file_path: Path) -> tuple[str, str]: ...  # utf-8 → latin-1 → utf-8/replace
+```
+
+### 3.4 `tree` — structure view (TR-004)
+
+```python
+def generate_directory_tree(root_dir: Path, filter_engine: ExclusionEngine,
+                            max_depth: int = 25) -> str: ...
+```
+
+Glyphs `├── └── │   `, dirs suffixed `/`, sorted identically to the scanner.
+Shows eligible layout including omitted paths (noise pruned); sensitive
+**names** may appear in the tree but their **contents** are never embedded.
+
+### 3.5 `renderer` — Markdown serialization (TR-005/011)
+
+```python
+def calculate_code_fence(content: str) -> str: ...  # "`" * max(3, longest_run + 1)
+def format_size(size_bytes: int) -> str: ...
+def render_markdown(config: ScanConfig, result: ScanResult) -> str: ...
+```
+
+Layout: `# Codebase Dump: <project>` →
+`## Project Structure` (indented block; skipped when `no_tree`) →
+`## File: <rel>` + `- Language: … | Size: … | Lines: …` + fenced content
+(repeated, sorted) → `## Excluded Files` table when omissions exist. No
+timestamps inside the file (determinism).
+
+### 3.6 `writer` — atomic persistence (TR-009)
+
+```python
+def write_dump_file(output_path: Path, content: str, force: bool = False) -> int: ...
+```
+
+Refuse-if-exists without `force` (`FileExistsError` → exit `1`); `mkdir -p`
+parents; temp sibling `.tmp.<pid>.<name>` + `flush/fsync` + `os.replace`;
+temp cleanup on failure.
+
+### 3.7 `cli` — menu + parsers + orchestration (TR-001/002/007/009/010/012)
+
+```python
+BANNER: str                        # CODEDUMPER CLI banner
+def build_parser() -> argparse.ArgumentParser: ...   # dump subcommand + legacy
+def parse_size_str(val: str) -> int: ...             # B/KB/MB/GB grammar
+def run_interactive_menu() -> int: ...               # options 1..6
+def run_dump(args: argparse.Namespace) -> int: ...   # shared dump pipeline
+def main(argv: list[str] | None = None) -> int: ...
+```
+
+Dispatch: `argv == []` (or `None` resolved to `[]`) → menu; first token
+`dump` → subcommand; else legacy path. `--max-file-size` primary,
+`--max-size` alias. Menu option `2` prompts for a path; option `4` prompts
+for comma-separated globs stored for the session; option `5` prints help;
+`6`/EOF exits `0`; `KeyboardInterrupt` → `130`.
+
+### 3.8 Suggested-module mapping (README §"Technical design")
+
+| Suggested | Actual home | Note |
+|---|---|---|
+| `cli.py` | `cli.py` | menu + parsers + output |
+| `scanner.py` | `scanner.py` | discovery |
+| `tree.py` | `tree.py` | structure |
+| `exporter.py` | `renderer.py` + `writer.py` | generation + persistence |
+| `exclusions.py` | `filter.py` | rules |
+| `safety.py` | `classifier.py` + `filter.py` (sensitive tier) | type/size/secrets |
+| `config.py` | `models.ScanConfig` + `cli.parse_size_str` | validated settings |
+
+No new modules: creating them would split cohesive units for no behavioral
+gain.
 
 ---
 
-## 4. Workflows (Mermaid Diagrams)
+## 4. Workflows
 
-### 4.1 CLI Execution Workflow
+### 4.1 Dispatch
 
 ```mermaid
 flowchart TD
-    Start([CLI Invocation]) --> Parse[Parse Arguments & Flags]
-    Parse --> Validate{Target Exists & Valid?}
-    Validate -->|No| Exit1[Print Error & Exit 1]
-    Validate -->|Yes| OutputCheck{Output File Exists without --force?}
-    OutputCheck -->|Yes| Exit1
-    OutputCheck -->|No| Scan[Execute Filesystem Scanner]
-    Scan --> Render[Render Markdown Document]
-    Render --> DryRun{Is --dry-run?}
-    DryRun -->|Yes| PrintSummary[Print Console Summary]
-    DryRun -->|No| Write[Atomic Write to Destination]
-    Write --> WriteCheck{Write Successful?}
-    WriteCheck -->|No| Exit2[Print I/O Error & Exit 2]
-    WriteCheck -->|Yes| PrintSummary
-    PrintSummary --> Exit0([Exit 0: Success])
+    Invoke([codedumper invocation]) --> HasArgs{Arguments?}
+    HasArgs -->|None| Menu[Interactive menu 1..6]
+    HasArgs -->|First token is dump| Sub[Parse dump subcommand]
+    HasArgs -->|Otherwise| Leg[Parse legacy form]
+    Menu -->|1/2| Cfg[Build ScanConfig]
+    Menu -->|3| Dry[ScanConfig dry_run=True]
+    Menu -->|4| Sess[Store session globs → Menu]
+    Menu -->|5| Help[Print help → Menu]
+    Menu -->|6/EOF| Exit0([Exit 0])
+    Sub --> Val{Valid?}
+    Leg --> Val
+    Val -->|No| Exit1[Exit 1]
+    Val -->|Yes| Scan[scan_repository]
+    Scan --> Render[render_markdown]
+    Render --> IsDry{--dry-run?}
+    IsDry -->|Yes| Report[Console report]
+    IsDry -->|No| Guard{Exists && !--force?}
+    Guard -->|Yes + non-interactive| Exit1
+    Guard -->|Yes + menu| Confirm{Confirm overwrite?}
+    Confirm -->|No| Menu
+    Confirm -->|Yes| Write[Atomic write]
+    Guard -->|No| Write
+    Write -->|OSError| Exit2[Exit 2]
+    Write --> Report --> Exit0
 ```
 
-### 4.2 File Classification & Filtering Workflow
+### 4.2 Filtering (precedence)
 
 ```mermaid
 flowchart TD
-    FileNode[Discovered File Node] --> SecretCheck{Matches Sensitive Pattern?}
-    SecretCheck -->|Yes| OmitSecret[Omit: SENSITIVE_CREDENTIAL]
-    SecretCheck -->|No| HiddenCheck{Is Hidden & !include_hidden?}
-    HiddenCheck -->|Yes| OmitHidden[Omit: HIDDEN_FILE]
-    HiddenCheck -->|No| UserGlob{Matches User --exclude Glob?}
-    UserGlob -->|Yes| OmitGlob[Omit: USER_EXCLUDE_PATTERN]
-    UserGlob -->|No| SizeCheck{Size > max_size_bytes?}
-    SizeCheck -->|Yes| OmitSize[Omit: EXCEEDS_MAX_SIZE]
-    SizeCheck -->|No| BinaryCheck{Contains Null Bytes or Non-Text Ratio > 30%?}
-    BinaryCheck -->|Yes| OmitBinary[Omit: BINARY_FILE]
-    BinaryCheck -->|No| Include[Include File in Markdown Dump]
+    F[Discovered node] --> S{Sensitive?}
+    S -->|Yes| O1[Omit SENSITIVE_CREDENTIAL]
+    S -->|No| N{Default noise?}
+    N -->|Yes| O2[Omit DEFAULT_NOISE]
+    N -->|No| H{Hidden && !include_hidden?}
+    H -->|Yes| O3[Omit HIDDEN]
+    H -->|No| G{User glob?}
+    G -->|Yes| O4[Omit USER_EXCLUDE_PATTERN]
+    G -->|No| Z{Size > cap?}
+    Z -->|Yes| O5[Omit EXCEEDS_MAX_SIZE]
+    Z -->|No| B{Binary / unreadable?}
+    B -->|Yes| O6[Omit BINARY_FILE / READ_ERROR]
+    B -->|No| I[Include]
 ```
 
 ---
 
 ## 5. Security & Safety Design
 
-1. **Path Traversal Shielding:** Resolves paths via `.resolve()` and calculates relative paths with `.relative_to()`. Paths attempting traversal outside the target root raise validation errors.
-2. **Zero In-Place Modification:** The target directory is strictly opened in read-only mode (`open(..., 'rb')`). No index or lock files are deposited inside target repository.
-3. **Atomic Writes:** Prevents incomplete or corrupt files from persisting if process is killed or disk fills up.
-4. **Credential Blacklist:** Built-in pattern table covers `.env*`, `*.pem`, `*.key`, `id_rsa*`, `credentials.json`, `*.p12`, `*.pfx`, `*.cer`.
+1. Offline-only; no network imports in `codedumper`.
+2. Unbypassable sensitive tier; filename-only reporting.
+3. Symlinks never followed; depth guard; root containment via `resolve()`.
+4. Read-only source access; atomic destination writes.
+5. Menu overwrite confirmation; non-interactive refusal without `--force`.
+6. Invalid size strings rejected before any I/O.
 
 ---
 
 ## 6. Design Trade-Offs
 
-- **Standard Library vs. Third-Party Libraries (e.g., Click, Rich, Pathspec):**
-  *Decision:* Standard library (`argparse`, `pathlib`).
-  *Rationale:* Zero-dependency CLI ensures instant installation and zero supply chain vulnerabilities.
-- **In-Memory Rendering vs. Full Streaming:**
-  *Decision:* Render files into structured in-memory string and write to file.
-  *Rationale:* Bounded memory footprint (individual files are capped at 1 MB by default; 1,000 text files occupy ~15-30 MB in memory). Allows atomic file replacement and SHA-256 integrity calculation before disk commit.
+- **Superset CLI vs. clean break:** keep legacy form working (existing tests
+  + scripts) while documenting `dump` as primary. Cost: slightly larger
+  parser. Benefit: zero regressions.
+- **In-file timing removed:** console keeps `Duration`; file drops it so
+  SHA-256 determinism holds.
+- **Headings changed to README's:** `## Project Structure` / `## File:` /
+  `## Excluded Files`; legacy `Table of Contents/Directory Tree/Repository
+  Files/Omission Manifest` retired (one existing test updated).
+- **Stdlib-only retained:** README permits any modular Python, but zero-dep
+  preserves installability and auditability; no behavior needs third-party
+  code.
