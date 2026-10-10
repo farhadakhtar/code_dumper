@@ -114,7 +114,12 @@ def _add_dump_options(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Construct argument parser for codedumper CLI."""
+    """Construct the legacy direct-form parser (also used for top-level help).
+
+    The ``dump`` subcommand has its own parser (see :func:`build_dump_parser`);
+    :func:`main` dispatches on the first token so a project directory never
+    collides with the subcommand name.
+    """
     parser = argparse.ArgumentParser(
         prog="codedumper",
         description="Turn any codebase into one organized Markdown document.\n\n"
@@ -130,22 +135,6 @@ def build_parser() -> argparse.ArgumentParser:
         version=f"%(prog)s {codedumper.__version__}",
     )
 
-    subparsers = parser.add_subparsers(dest="command", metavar="command")
-
-    dump_parser = subparsers.add_parser(
-        "dump",
-        help="Export a project directory to a Markdown file.",
-        description="Export a project directory to a single, organized Markdown document.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    dump_parser.add_argument(
-        "dump_path",
-        nargs="?",
-        default=".",
-        help="Path to the project directory to export. (Default: current working directory)",
-    )
-    _add_dump_options(dump_parser)
-
     # Legacy direct form: `codedumper [TARGET_DIR] [OPTIONS]`
     parser.add_argument(
         "target_dir",
@@ -156,6 +145,29 @@ def build_parser() -> argparse.ArgumentParser:
     _add_dump_options(parser)
 
     return parser
+
+
+def build_dump_parser() -> argparse.ArgumentParser:
+    """Construct the ``codedumper dump`` subcommand parser."""
+    dump_parser = argparse.ArgumentParser(
+        prog="codedumper dump",
+        description="Export a project directory to a single, organized Markdown document.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dump_parser.add_argument(
+        "dump_path",
+        nargs="?",
+        default=".",
+        help="Path to the project directory to export. (Default: current working directory)",
+    )
+    dump_parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {codedumper.__version__}",
+    )
+    _add_dump_options(dump_parser)
+    return dump_parser
 
 
 def execute_dump(
