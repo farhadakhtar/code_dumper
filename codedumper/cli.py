@@ -365,10 +365,10 @@ def main(args: Optional[List[str]] = None) -> int:
             print("\nOperation canceled by user.", file=sys.stderr)
             return 130
 
-    parser = build_parser()
-    parsed_args = parser.parse_args(args)
-
-    if parsed_args.command == "dump":
+    # Subcommand dispatch: `codedumper dump ...` vs. legacy direct form.
+    # (A project directory is never confused with the subcommand name.)
+    if args[0] == "dump":
+        parsed_args = build_dump_parser().parse_args(args[1:])
         return execute_dump(
             target_dir=parsed_args.dump_path,
             output_path=parsed_args.output_path,
@@ -379,6 +379,9 @@ def main(args: Optional[List[str]] = None) -> int:
             no_tree=parsed_args.no_tree,
             dry_run=parsed_args.dry_run,
         )
+
+    parser = build_parser()
+    parsed_args = parser.parse_args(args)
 
     # Legacy direct form.
     target = parsed_args.target_dir or "."
