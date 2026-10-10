@@ -306,3 +306,26 @@ Call stack:
     log.info(
 Message: 'Pushed %s \u2192 %s/%s (attempt %d)'
 Arguments: ('main', 'origin', 'main', 1)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\logging\__init__.py", line 1163, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Program Files\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 61: character maps to <undefined>
+Call stack:
+  File "C:\Program Files\Python312\Lib\threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Program Files\Python312\Lib\threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "D:\PROJECTS\code_dumper\autocommit\watcher.py", line 223, in run
+    self._handle_change()
+  File "D:\PROJECTS\code_dumper\autocommit\watcher.py", line 234, in _handle_change
+    self._do_push()
+  File "D:\PROJECTS\code_dumper\autocommit\watcher.py", line 251, in _do_push
+    success = push_commits(
+  File "D:\PROJECTS\code_dumper\autocommit\git_ops.py", line 382, in push_commits
+    log.info(
+Message: 'Pushed %s \u2192 %s/%s (attempt %d)'
+Arguments: ('main', 'origin', 'main', 1)
