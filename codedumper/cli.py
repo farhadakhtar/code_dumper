@@ -159,6 +159,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to the repository or directory to export. (Default: current working directory)",
     )
+    parser.add_argument(
+        "--format",
+        choices=FORMAT_CHOICES,
+        default=FORMAT_TEXT,
+        help="Output format: plain text '.txt' (default) or Markdown '.md'.",
+    )
     _add_dump_options(parser)
 
     return parser
@@ -486,6 +492,7 @@ def main(args: Optional[List[str]] = None) -> int:
             max_size=parsed_args.max_size,
             no_tree=parsed_args.no_tree,
             dry_run=parsed_args.dry_run,
+            dump_format=parsed_args.dump_format,
         )
 
     parser = build_parser()
@@ -502,6 +509,7 @@ def main(args: Optional[List[str]] = None) -> int:
         max_size=parsed_args.max_size,
         no_tree=parsed_args.no_tree,
         dry_run=parsed_args.dry_run,
+        dump_format=parsed_args.dump_format,
     )
 
 
