@@ -679,9 +679,11 @@ def diagnose_launch_logo(stream=None, env=None,
         via_indicators = True
 
     cols = width if width is not None else terminal_width()
-    if cols < MIN_TERM_COLS:
+    usable = cols - 2 * LOGO_H_MARGIN
+    if usable < MIN_ART_COLS:
         return LaunchDiagnosis(False, "narrow-window",
-                               f"terminal width {cols} < {MIN_TERM_COLS}")
+                               f"usable width {usable} < {MIN_ART_COLS} "
+                               f"(terminal {cols})")
 
     data = logo_asset_bytes()
     if not data:
