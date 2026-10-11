@@ -131,10 +131,10 @@ def test_decode_supported_color_types():
     w, h, px = decode_png_rgba(
         _make_png(2, 1, 0, [[0, 9]], trns=struct.pack(">H", 0)))
     assert px == bytes((0, 0, 0, 0, 9, 9, 9, 255))
-    # Truecolor with tRNS key (pure red transparent).
+    # Truecolor with tRNS key (pure red transparent; keys are 16-bit).
     w, h, px = decode_png_rgba(
         _make_png(2, 1, 2, [[255, 0, 0, 0, 1, 2]],
-                  trns=struct.pack(">HHH", 255, 0, 0)))
+                  trns=struct.pack(">HHH", 65535, 0, 0)))
     assert px == bytes((255, 0, 0, 0, 0, 1, 2, 255))
 
 
@@ -200,6 +200,8 @@ def test_capability_matrix():
 # ---------------------------------------------------------------------------
 
 def test_fit_preserves_aspect_and_caps():
+    # fit_size returns (cols, downscaled image rows); the renderer pairs
+    # image rows into half as many character rows (rounded up).
     assert fit_size(882, 232, 80) == (80, 11)
     assert fit_size(882, 232, 40) == (40, 6)
     cols, rows = fit_size(882, 232, 400)
@@ -213,7 +215,7 @@ def test_render_structure_and_row_parity():
     art = render_logo_for_width(80)
     assert art is not None
     rows = art.split("\n")
-    assert len(rows) == 11
+    assert len(rows) == 6  # 11 downscaled rows paired into 6 character rows
     for row in rows:
         assert row.endswith(logo.RESET)
         assert row.count("\u2584") == 80
@@ -230,7 +232,7 @@ def test_narrow_window_skips_art():
     assert render_logo_for_width(10) is None
     art = render_logo_for_width(40)
     assert art is not None
-    assert len(art.split("\n")) == 6
+    assert len(art.split("\n")) == 3  # 6 downscaled rows, paired
 
 
 def test_print_fallback_never_raises():
