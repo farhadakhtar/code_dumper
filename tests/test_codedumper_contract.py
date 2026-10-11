@@ -275,8 +275,9 @@ def test_menu_exit_option():
 def test_menu_matches_exact_spec(monkeypatch, capsys):
     """The fallback launch screen matches the specification verbatim.
 
-    Under pytest stdout is not a tty, so the image logo is skipped and the
-    hybrid branding (centered version + tagline) plus options block shows.
+    Under pytest stdout is not a tty (and 80 columns cannot fit the fixed
+    wordmark), so the hybrid branding (centered version + tagline) plus
+    options block shows without the wordmark.
     """
     monkeypatch.setenv("COLUMNS", "80")
     with patch("builtins.input", side_effect=["7"]):
