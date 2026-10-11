@@ -287,10 +287,35 @@ def test_box_sampling_is_smooth_not_blocky():
     # Uniform input stays uniform (no invented artifacts).
     red = bytes((200, 10, 10, 255)) * (8 * 8)
     assert downscale_rgba(red, 8, 8, 4, 4) == bytes((200, 10, 10, 255)) * (4 * 4)
-    # A hard black/white edge averages to mid gray, not a random side.
+    # A hard black/white edge averages to the gamma-2.0 perceptual middle
+    # (180), not the naive byte middle (127) that muddies gradients.
     edge = bytes((0, 0, 0, 255)) * 4 + bytes((255, 255, 255, 255)) * 4
     mid = downscale_rgba(edge, 8, 1, 1, 1)
-    assert list(mid) == [127, 127, 127, 255]
+    assert list(mid) == [180, 180, 180, 255]
+
+
+def test_gamma_ramp_preserves_order_and_distinctness():
+    from codedumper.logo import downscale_rgba
+    ramp = b"".join(bytes((v, v, v, 255)) for v in (i * 32 for i in range(8)))
+    out = downscale_rgba(ramp, 8, 1, 4, 1)
+    vals = [out[i] for i in range(0, 16, 4)]
+    assert vals == sorted(vals) and len(set(vals)) == 4
+
+
+def test_brand_lines_centered_version_and_tagline():
+    from codedumper.logo import TAGLINE, format_brand_lines
+    lines = format_brand_lines(80, "1.1.0")
+    assert lines[0] == " " * ((80 - len("v1.1.0")) // 2) + "v1.1.0"
+    assert lines[1] == " " * ((80 - len(TAGLINE)) // 2) + TAGLINE
+    assert TAGLINE == "Turn your codebase into a clean, AI-ready dump."
+    # Dynamic version, never hardcoded.
+    assert format_brand_lines(80, "9.9.9")[0].endswith("v9.9.9")
+    # Too narrow for the tagline: version stays, tagline is skipped
+    # (a wrapped tagline would look more broken than an absent one).
+    narrow = format_brand_lines(40, "1.1.0")
+    assert narrow == [" " * ((40 - len("v1.1.0")) // 2) + "v1.1.0"]
+    # Centering is relative to the terminal width.
+    assert format_brand_lines(120, "1.1.0")[0].startswith(" " * 57)
 
 
 def test_print_fallback_never_raises():

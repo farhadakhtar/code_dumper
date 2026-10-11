@@ -220,13 +220,18 @@ def terminal_supports_truecolor(stream, env) -> bool: ...  # conservative gate
 def _query_console_vt(get_mode, set_mode) -> tuple: ...  # pure VT decision logic
 def _windows_console_vt(stream) -> tuple: ...  # Win32 VT probe (unknown off-Windows)
 def fit_display(term_cols, w, h) -> tuple: ...  # capped, centered (cols, rows, pad)
+def downscale_rgba(...) -> bytes: ...            # gamma-2.0 box average, black composite
 def render_half_blocks(...) -> str: ...          # fg=bottom, bg=top; per-row resets
 def diagnose_launch_logo(stream, env, width) -> LaunchDiagnosis: ...  # reason-coded outcome
 def print_launch_logo(stream, width, env) -> bool: ...     # never raises; debug env gated
+TAGLINE: str = "Turn your codebase into a clean, AI-ready dump."  # crisp hybrid line
+def format_brand_lines(term_cols, version) -> list: ...  # centered version+tagline
 ```
 
-Launch shows the rendered artwork plus a dynamic `v<installed>` line, then
-the options block. Pipes, `NO_COLOR`, `dumb` terminals, missing truecolor
+Launch shows the rendered artwork plus centered crisp `v<installed>` and
+tagline text lines (hybrid: the baked-in glyphs dissolve at terminal scale,
+so the identical wording is repeated legibly; the artwork itself is never
+redrawn), then the options block. Pipes, `NO_COLOR`, `dumb` terminals, missing truecolor
 indicators on non-Windows consoles, legacy consoles, missing/corrupt
 assets, unencodable output, and narrow windows (<40 cols) all fall back to
 the plain version + menu with no fake replacement logo. On Windows, an

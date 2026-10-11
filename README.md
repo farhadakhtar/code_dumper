@@ -93,10 +93,14 @@ Type `codedumper` in any project directory to open the interactive menu.
 On a true-color terminal (e.g. Windows Terminal) the launch shows the
 official CodeDumper logo rendered from the bundled `logo.png` artwork —
 centered, capped at a readable width with margins, aspect-preserved —
-followed by the installed version and the menu:
+followed by the installed version, the tagline, and the menu. The
+baked-in tagline dissolves at terminal resolution, so it is repeated once
+as crisp text (identical wording); the artwork itself is never redrawn:
 
 ```text
-v1.1.0
+                                     v1.1.0
+
+                Turn your codebase into a clean, AI-ready dump.
 
  1. Dump the current project
  2. Dump another project
@@ -106,6 +110,9 @@ v1.1.0
  6. Help and documentation
  7. Exit
 ```
+
+(Centering adapts to the actual terminal width; the options block itself
+is fixed.)
 
 Terminals without true-color support (classic conhost, pipes,
 `NO_COLOR`, `dumb` terminals, very narrow windows) skip the artwork and

@@ -273,17 +273,21 @@ def test_menu_exit_option():
         assert run_interactive_menu() == 0
 
 
-def test_menu_matches_exact_spec(capsys):
+def test_menu_matches_exact_spec(monkeypatch, capsys):
     """The fallback launch screen matches the specification verbatim.
 
     Under pytest stdout is not a tty, so the image logo is skipped and the
-    plain menu (dynamic version + options block) is shown.
+    hybrid branding (centered version + tagline) plus options block shows.
     """
+    monkeypatch.setenv("COLUMNS", "80")
     with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
     import codedumper
     out = capsys.readouterr().out
-    assert out == f"v{codedumper.__version__}\n\n" + MENU_BODY + "\nGoodbye!\n"
+    version_line = " " * ((80 - len(f"v{codedumper.__version__}")) // 2) + f"v{codedumper.__version__}"
+    tagline = "Turn your codebase into a clean, AI-ready dump."
+    tagline_line = " " * ((80 - len(tagline)) // 2) + tagline
+    assert out == version_line + "\n" + tagline_line + "\n\n" + MENU_BODY + "\nGoodbye!\n"
     # Options on consecutive lines with no blanks between them.
     assert (" 1. Dump the current project\n"
             " 2. Dump another project\n"
@@ -292,9 +296,11 @@ def test_menu_matches_exact_spec(capsys):
             " 5. Configure exclusions\n"
             " 6. Help and documentation\n"
             " 7. Exit\n") in out
-    # No plain-text replacement heading and no duplicated tagline text.
+    # Hybrid, not duplicated: the tagline text appears exactly once
+    # (the baked-in glyphs are pixels, not text).
+    assert out.count("AI-ready") == 1
+    # No plain-text replacement heading.
     assert "CODEDUMPER CLI" not in out
-    assert "AI-ready" not in out
     # PowerShell/CMD-safe: fallback menu output must be pure ASCII.
     out.encode("ascii")
     # The prompt itself is passed to input(), not printed (mocked input
@@ -327,14 +333,16 @@ def test_menu_shows_image_logo_when_capable(monkeypatch, capsys):
     assert "\x1b[38;2;" in out  # true-color escapes from real pixels
     assert "\u2584" in out
     assert f"v{codedumper.__version__}" in out
+    assert "Turn your codebase into a clean, AI-ready dump." in out
     assert " 1. Dump the current project" in out
     # Identity preserved without text duplication.
     assert "CODEDUMPER CLI" not in out
-    assert "AI-ready" not in out
-    assert "Turn your codebase" not in out
-    # Final art row is reset-terminated before the version line: nothing
-    # overwrites the image, and no debug output leaks without opt-in.
-    assert "\x1b[0m\nv" in out
+    assert out.count("AI-ready") == 1
+    assert "Turn your codebase into Markdown." not in out
+    # Final art row is reset-terminated before the branding lines that
+    # follow: nothing overwrites the image, and no debug output leaks
+    # without opt-in.
+    assert "\x1b[0m\n" in out
 
 
 def test_menu_art_path_stays_silent_without_debug(monkeypatch, capsys):

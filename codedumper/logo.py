@@ -762,3 +762,31 @@ def print_launch_logo(stream=None, width: Optional[int] = None,
         except (OSError, UnicodeEncodeError, ValueError):
             pass
     return diagnosis.shown
+
+
+# ---------------------------------------------------------------------------
+# Hybrid branding: image art plus crisp version/tagline text
+# ---------------------------------------------------------------------------
+
+# Exact tagline baked into the artwork. At terminal resolution the baked-in
+# glyphs dissolve into texture, so the launch prints this same wording as
+# crisp text underneath — identical wording, never conflicting, and never
+# a substitute for the image itself.
+TAGLINE = "Turn your codebase into a clean, AI-ready dump."
+
+
+def format_brand_lines(term_cols: int, version: str) -> List[str]:
+    """Centered ``v<version>`` + tagline lines for the launch screen.
+
+    Centering is relative to the full terminal width (the same grid the
+    artwork is centered in), using plain leading spaces only. The tagline
+    is omitted when the window cannot fit it on one line — a wrapped
+    tagline would look more broken than an absent one; the menu below is
+    unaffected.
+    """
+    width = max(term_cols, 1)
+    version_line = f"v{version}"
+    lines = [" " * max(0, (width - len(version_line)) // 2) + version_line]
+    if len(TAGLINE) <= term_cols:
+        lines.append(" " * max(0, (width - len(TAGLINE)) // 2) + TAGLINE)
+    return lines

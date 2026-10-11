@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import codedumper
-from codedumper.logo import print_launch_logo
+from codedumper.logo import format_brand_lines, print_launch_logo, terminal_width
 from codedumper.models import ScanConfig
 from codedumper.renderer import iter_markdown_parts, iter_text_parts
 from codedumper.reporter import format_cli_summary
@@ -467,7 +467,8 @@ def run_interactive_menu() -> int:
     Display matches the approved launch-screen specification verbatim.
     """
     print_launch_logo()
-    print(f"v{codedumper.__version__}")
+    for line in format_brand_lines(terminal_width(), codedumper.__version__):
+        print(line)
     print()
     print(MENU_BODY)
     session_excludes: List[str] = []
