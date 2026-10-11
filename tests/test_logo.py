@@ -392,3 +392,90 @@ def test_debug_env_prints_reason_without_spam(monkeypatch, capsys):
     monkeypatch.delenv(logo.LOGO_DEBUG_ENV_VAR)
     assert print_launch_logo(stream=_Pipe()) is False
     assert capsys.readouterr().err == ""
+
+
+# ---------------------------------------------------------------------------
+# Windows console VT probing (the indicator-less terminal case)
+# ---------------------------------------------------------------------------
+
+def test_query_console_vt_branches():
+    from codedumper.logo import _query_console_vt
+    assert _query_console_vt(lambda: (True, 0x0004), lambda m: True)[0] == "enabled"
+    assert _query_console_vt(lambda: (True, 0x0000), lambda m: True) == (
+        "enabled-on-demand", "windows-vt-processing-enabled-on-demand")
+    status, detail = _query_console_vt(lambda: (True, 0x0000), lambda m: False)
+    assert status == "unavailable" and "unavailable" in detail
+
+    def boom_set(m):
+        raise OSError("denied")
+    assert _query_console_vt(
+        lambda: (True, 0x0000), boom_set)[0] == "unavailable"
+    assert _query_console_vt(lambda: (False, None), lambda m: True)[0] == "unknown"
+
+    def boom_get():
+        raise RuntimeError("nope")
+    assert _query_console_vt(boom_get, lambda m: True)[0] == "unknown"
+
+
+def test_windows_console_vt_platform_and_fileno():
+    from codedumper.logo import _windows_console_vt
+    assert _windows_console_vt(_Tty(), _platform="linux") == (
+        "unknown", "not-windows")
+    assert _windows_console_vt(_Pipe(), _platform="win32")[0] == "unknown"
+
+
+def test_windows_console_vt_real_handle_never_raises():
+    """A genuine OS handle either reports a state or 'unknown' — no crash."""
+    import os as _os
+    from codedumper.logo import _windows_console_vt
+    if _os.name != "nt":
+        pytest.skip("Windows console probe needs Windows")
+    with open(_os.devnull, "wb") as fh:
+        status, _ = _windows_console_vt(fh, _platform="win32")
+        assert status in ("enabled", "enabled-on-demand",
+                          "unavailable", "unknown")
+
+
+def test_diagnose_windows_vt_without_indicators(monkeypatch, capsys):
+    """The reported failure: bare env (no WT_SESSION/COLORTERM/TERM) on an
+    interactive Windows console must still render via VT probing."""
+    from codedumper.logo import diagnose_launch_logo
+    monkeypatch.setattr(logo, "_windows_console_vt",
+                        lambda stream, _platform=None: (
+                            "enabled",
+                            "windows-vt-processing-already-enabled"))
+    d = diagnose_launch_logo(stream=_Tty(), env={}, width=100)
+    assert (d.shown, d.reason) == (True, "shown")
+    assert "vt-processing" in d.detail
+
+
+def test_diagnose_windows_vt_unavailable(monkeypatch):
+    from codedumper.logo import diagnose_launch_logo
+    monkeypatch.setattr(logo, "_windows_console_vt",
+                        lambda stream, _platform=None: (
+                            "unavailable",
+                            "windows-vt-processing-unavailable (legacy?)"))
+    d = diagnose_launch_logo(stream=_Tty(), env={}, width=100)
+    assert (d.shown, d.reason) == (False, "windows-vt-unavailable")
+
+
+def test_diagnose_vt_path_skips_utf8_reconfigure(monkeypatch):
+    """On the VT path (possibly legacy conhost) we must not reconfigure
+    the code page behind the user's back: unencodable output refuses with
+    the chcp hint instead."""
+    from codedumper.logo import diagnose_launch_logo
+    monkeypatch.setattr(logo, "_windows_console_vt",
+                        lambda stream, _platform=None: (
+                            "enabled", "windows-vt-processing_TEST"))
+    reconfig_calls = []
+
+    class _Cp1252Tty(_Tty):
+        encoding = "cp1252"
+
+        def reconfigure(self, encoding=None, **kwargs):
+            reconfig_calls.append(encoding)
+
+    d = diagnose_launch_logo(stream=_Cp1252Tty(), env={}, width=100)
+    assert (d.shown, d.reason) == (False, "encoding")
+    assert reconfig_calls == []
+    assert "chcp" in d.detail
