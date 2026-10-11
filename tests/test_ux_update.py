@@ -152,41 +152,28 @@ def test_invalid_format_rejected(work_project: Path, tmp_path: Path, capsys):
 
 
 # ---------------------------------------------------------------------------
-# Menu option 4 with a mocked updater (no real network)
+# Updater flows reachable without the menu (mocked; no real network)
 # ---------------------------------------------------------------------------
 
-def test_menu_update_check_unavailable(monkeypatch, capsys):
+def test_update_check_unavailable_reports_manual_route(monkeypatch, capsys):
     monkeypatch.setattr(
         updater, "check_for_updates",
         lambda: UpdateCheck(state="unavailable", installed_version="1.1.0",
                             note="No published releases exist yet."))
-    with patch("builtins.input", side_effect=["4", "5"]):
-        assert run_interactive_menu() == 0
+    assert updater.run_update_interactive() == 0
     out = capsys.readouterr().out
     assert "No published releases exist yet." in out
     assert "Manual update route" in out
 
 
-def test_menu_update_check_up_to_date(monkeypatch, capsys):
+def test_update_check_up_to_date_reports_cleanly(monkeypatch, capsys):
     monkeypatch.setattr(
         updater, "check_for_updates",
         lambda: UpdateCheck(state="up_to_date", installed_version="1.1.0",
                             latest_version="1.1.0", note="current"),
     )
-    with patch("builtins.input", side_effect=["4", "5"]):
-        assert run_interactive_menu() == 0
+    assert updater.run_update_interactive() == 0
     assert "up to date" in capsys.readouterr().out.lower()
-
-
-def test_menu_update_check_calls_updater_once(monkeypatch):
-    calls = []
-    monkeypatch.setattr(
-        "codedumper.cli.run_update_interactive",
-        lambda: calls.append(1) or 0,
-    )
-    with patch("builtins.input", side_effect=["4", "5"]):
-        assert run_interactive_menu() == 0
-    assert calls == [1]
 
 
 # ---------------------------------------------------------------------------
@@ -537,7 +524,7 @@ def test_update_confirm_eof_cancels(monkeypatch, capsys, tmp_path: Path):
 # Dumping and update checks never modify the project
 # ---------------------------------------------------------------------------
 
-def test_dump_and_update_check_leave_project_untouched(tmp_path: Path, monkeypatch):
+def test_dump_leaves_project_untouched(tmp_path: Path, monkeypatch):
     proj = tmp_path / "pristine"
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
@@ -545,11 +532,7 @@ def test_dump_and_update_check_leave_project_untouched(tmp_path: Path, monkeypat
     before = _hash_tree(proj)
 
     monkeypatch.chdir(proj)
-    monkeypatch.setattr(
-        updater, "check_for_updates",
-        lambda: UpdateCheck(state="unavailable", installed_version="1.1.0",
-                            note="offline-test"))
-    with patch("builtins.input", side_effect=["1", "", "4", "5"]):
+    with patch("builtins.input", side_effect=["1", "", "6"]):
         assert run_interactive_menu() == 0
 
     assert _hash_tree(proj) == before
