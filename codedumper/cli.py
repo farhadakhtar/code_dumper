@@ -12,6 +12,7 @@ Implements the README contract:
 """
 
 import argparse
+import os
 import re
 import signal
 import sys
@@ -20,7 +21,6 @@ from pathlib import Path
 from typing import List, Optional
 
 import codedumper
-from codedumper.logo import format_brand_lines, print_launch_logo, terminal_width
 from codedumper.models import ScanConfig
 from codedumper.renderer import iter_markdown_parts, iter_text_parts
 from codedumper.reporter import format_cli_summary
@@ -29,8 +29,7 @@ from codedumper.updater import GITHUB_REPO_URL
 from codedumper.writer import write_dump_stream
 
 
-# Menu options block (byte-stable; the launch logo above it is rendered
-# from the bundled logo.png artwork, never from text art).
+# Menu options block (byte-stable).
 MENU_BODY = """\
  1. Dump the current project
  2. Dump another project
