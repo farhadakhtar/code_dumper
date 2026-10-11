@@ -107,7 +107,7 @@ are real scan results; nothing is fabricated.
 
 | Requirement ID | Title | Description | Priority |
 |---|---|---|---|
-| **FR-001** | Interactive menu (1–5) | Bare `codedumper` shows the specified menu (get / update / GitHub / update-check / exit); invalid input re-prompts; EOF exits 0; Ctrl+C exits 130; piped stdin works. | High |
+| **FR-001** | Interactive menu (1–7) + launch logo | Bare `codedumper` renders the bundled `logo.png` artwork (or a plain fallback) with a dynamic version line, then the specified menu (dump current / dump another / preview / update / exclusions / help / exit); invalid input re-prompts; EOF exits 0; Ctrl+C exits 130; piped stdin works. | High |
 | **FR-002** | `dump` subcommand | `codedumper dump [PATH]` dumps the given project; `PATH` defaults to `.`. | High |
 | **FR-003** | Recursive scanning | Recursively discover directories/files under the project root. | High |
 | **FR-004** | Deterministic ordering | Stable sorted processing; identical inputs → byte-identical files (timing is console-only). | High |
@@ -160,7 +160,7 @@ are real scan results; nothing is fabricated.
 **Story:** As a beginner, I run `codedumper`, pick `1`, accept the default
 path, and get `<project>.txt` next to my project.
 **Acceptance:**
-1. Menu matches the specified banner/options (`1..5`).
+1. Menu matches the specified launch screen (logo or plain fallback, options `1..7`).
 2. Output starts with `CODEBASE DUMP: <name>` and contains
    `PROJECT STRUCTURE`, one `FILE:`/`END FILE:` pair per eligible file,
    and no `#`/`##` headings or fences.
@@ -195,7 +195,7 @@ reach the dump under any flag combination.
 ## 6. CLI Contract (normative)
 
 ```text
-codedumper                              # interactive menu (options 1-5)
+codedumper                              # interactive menu (options 1-7 + logo)
 codedumper dump [PATH] [OPTIONS]        # primary non-interactive form
 codedumper [PATH] [OPTIONS]             # legacy form
 ```
@@ -213,7 +213,7 @@ Exit codes per FR-019.
 
 ### 7.1 MVP (v1.1)
 
-Menu 1–5, `.txt` default + Markdown opt-in, outside-project defaults with
+Menu 1–7 with image-backed launch art, `.txt` default + Markdown opt-in, outside-project defaults with
 self-exclusion, update-dump flow, GitHub opener, release check with honest
 unavailable state, pytest suite, install docs, `LICENSE`.
 
