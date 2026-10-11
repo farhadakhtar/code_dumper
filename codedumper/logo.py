@@ -158,7 +158,7 @@ def decode_png_rgba(data: bytes) -> Tuple[int, int, bytes]:
     seen_ihdr = False
     idat_parts: List[bytes] = []
     trns: Optional[bytes] = None
-   plte: Optional[bytes] = None
+    plte: Optional[bytes] = None
     while pos + 8 <= len(data):
         (length,) = struct.unpack(">I", data[pos:pos + 4])
         chunk_type = data[pos + 4:pos + 8].decode("latin1")
