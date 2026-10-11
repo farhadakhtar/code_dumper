@@ -133,14 +133,15 @@ def build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog="codedumper",
-        description="Turn any codebase into one organized Markdown document.\n\n"
+        description="Turn any codebase into one organized plain-text document.\n\n"
         "Run with no arguments to launch the interactive menu, or use "
         "'codedumper dump [PATH] [OPTIONS]' for non-interactive export.",
         epilog="Examples:\n"
         "  codedumper\n"
         "  codedumper dump ./my-project\n"
-        '  codedumper dump ./my-project --output ./exports/codebase.md\n'
-        "  codedumper dump ./my-project --dry-run\n",
+        '  codedumper dump ./my-project --output ./exports/codebase.txt\n'
+        "  codedumper dump ./my-project --dry-run\n"
+        "  codedumper dump ./my-project --format markdown\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -167,7 +168,7 @@ def build_dump_parser() -> argparse.ArgumentParser:
     """Construct the ``codedumper dump`` subcommand parser."""
     dump_parser = argparse.ArgumentParser(
         prog="codedumper dump",
-        description="Export a project directory to a single, organized Markdown document.",
+        description="Export a project directory to a single, organized plain-text document.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     dump_parser.add_argument(
