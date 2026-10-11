@@ -661,7 +661,8 @@ def diagnose_launch_logo(stream=None, env=None,
     except (ValueError, MemoryError, RecursionError) as exc:
         return LaunchDiagnosis(False, "render-failed", f"{exc}")
 
-    enc_ok, enc_detail = _ensure_block_encodable(out)
+    enc_ok, enc_detail = _ensure_block_encodable(
+        out, allow_reconfigure=via_indicators)
     if not enc_ok:
         hint = ("set the console code page to UTF-8 "
                 "(e.g. `chcp 65001`) and retry" if "encoding-cannot" in enc_detail
@@ -674,6 +675,9 @@ def diagnose_launch_logo(stream=None, env=None,
     except (OSError, UnicodeEncodeError, ValueError) as exc:
         return LaunchDiagnosis(False, "write-failed", f"{exc}")
 
+    if not via_indicators:
+        # Record how an indicator-less session was still approved.
+        return LaunchDiagnosis(True, "shown", supported_detail)
     if enc_detail:
         return LaunchDiagnosis(True, "shown", enc_detail)
     return LaunchDiagnosis(True, "shown", f"{cols}x{rows // 2 + rows % 2} cells")
