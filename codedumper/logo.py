@@ -344,13 +344,15 @@ def _check_indicators(env) -> Tuple[bool, str, str]:
 
 
 def terminal_supports_truecolor(stream=None, env=None) -> bool:
-    """Decide whether true-color half-block art can be shown.
+    """Decide from stream + environment indicators whether art can be shown.
 
     Conservative on purpose: legacy conhost (classic PowerShell/CMD),
     pipes, ``NO_COLOR``, and ``dumb`` terminals all report ``False`` and
     get the plain menu fallback. ``stream``/``env`` are injectable for
-    tests. Use :func:`diagnose_launch_logo` to learn *why* a session
-    falls back.
+    tests. Note: on Windows, :func:`diagnose_launch_logo` additionally
+    probes console VT processing, so a missing indicator alone is not the
+    final word there — use the diagnosis, not this function, to learn
+    *why* a session falls back.
     """
     if env is None:
         env = os.environ
