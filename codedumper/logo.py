@@ -511,20 +511,31 @@ def downscale_rgba(pixels: bytes, width: int, height: int,
 
 
 def render_half_blocks(small: bytes, cols: int, rows: int) -> str:
-    """Render downscaled RGBA as true-color ``▄`` half-block rows."""
+    """Render downscaled RGBA as true-color ``▄`` half-block rows.
+
+    ``▄`` (LOWER HALF BLOCK) fills its lower half with the *foreground*
+    color, so the foreground carries the *bottom* image pixel of each pair
+    and the background the *top* pixel. An unpaired final row fills the
+    whole cell with its own color. Every row ends with an ANSI reset so
+    colors never bleed into following output.
+    """
     lines: List[str] = []
     for y in range(0, rows, 2):
         top = y * cols * 4
-        bottom = top + cols * 4 if y + 1 < rows else None
+        has_bottom = y + 1 < rows
+        bottom = top + cols * 4 if has_bottom else None
         cells: List[str] = []
         for x in range(cols):
             o = top + x * 4
-            r1, g1, b1 = small[o], small[o + 1], small[o + 2]
-            if bottom is None:
-                r2 = g2 = b2 = 0
-            else:
+            upper = (small[o], small[o + 1], small[o + 2])
+            if has_bottom:
+                assert bottom is not None
                 q = bottom + x * 4
-                r2, g2, b2 = small[q], small[q + 1], small[q + 2]
+                lower = (small[q], small[q + 1], small[q + 2])
+            else:
+                lower = upper
+            r1, g1, b1 = lower
+            r2, g2, b2 = upper
             cells.append(
                 f"{ESC}[38;2;{r1};{g1};{b1};48;2;{r2};{g2};{b2}m{HALF_BLOCK}"
             )
@@ -536,22 +547,30 @@ def render_logo_for_width(term_cols: int, max_rows: int = MAX_ART_ROWS,
                           asset: Optional[Path] = None) -> Optional[str]:
     """Render the bundled logo for ``term_cols`` columns, or ``None``.
 
-    Returns ``None`` when the asset is missing/unreadable/unsupported or
-    the window is too narrow — callers then use the plain menu fallback.
+    The art is centered with plain leading spaces (never trailing
+    whitespace) within ``LOGO_MAX_COLS`` and horizontal margins, so rows
+    can neither wrap nor clip. Returns ``None`` when the asset is
+    missing/unreadable/unsupported or the window is too narrow — callers
+    then use the plain menu fallback.
     """
-    if term_cols < MIN_TERM_COLS:
-        return None
     try:
         data = logo_asset_bytes(asset)
         if not data:
             return None
         width, height, rgba = decode_png_rgba(data)
-        cols, rows = fit_size(width, height, term_cols, max_rows)
+        fitted = fit_display(term_cols, width, height, max_rows)
+        if fitted is None:
+            return None
+        cols, rows, pad = fitted
         small = downscale_rgba(rgba, width, height, cols, rows)
-        return render_half_blocks(small, cols, rows)
+        art = render_half_blocks(small, cols, rows)
     except (OSError, LogoError, ValueError, struct.error, zlib.error,
             MemoryError, RecursionError):
         return None
+    if pad:
+        prefix = " " * pad
+        art = "\n".join(prefix + line for line in art.split("\n"))
+    return art
 
 
 @dataclass
