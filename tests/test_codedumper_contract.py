@@ -1,9 +1,9 @@
-"""Contract tests for the CodeDumper v2 CLI (README-defined behavior).
+"""Contract tests for the CodeDumper CLI (README-defined behavior).
 
-Covers: the ``dump`` subcommand, ``--max-file-size``, the interactive menu,
-the README Markdown layout, honest reporting, determinism, symlinks,
-unicode paths, and license presence. All projects are temporary; no real
-credentials are used.
+Covers: the ``dump`` subcommand, ``--max-file-size``, ``--format``,
+the default plain-text (``.txt``) output contract, the interactive menu,
+honest reporting, determinism, symlinks, unicode paths, and license
+presence. All projects are temporary; no real credentials are used.
 """
 
 import hashlib
@@ -50,27 +50,62 @@ def _dump_config(proj: Path, out: Path, **kwargs) -> ScanConfig:
 # ---------------------------------------------------------------------------
 
 def test_dump_subcommand_basic(mini_project: Path, tmp_path: Path):
-    out = tmp_path / "dump_basic.md"
+    out = tmp_path / "dump_basic.txt"
     rc = main(["dump", str(mini_project), "-o", str(out), "--force"])
     assert rc == 0
     assert out.exists()
     text = out.read_text(encoding="utf-8")
-    assert "# Codebase Dump: my_project" in text
-    assert "## Project Structure" in text
-    assert "## File: src/app.py" in text
-    assert "## Excluded Files" in text
+    assert "CODEBASE DUMP: my_project" in text
+    assert "PROJECT STRUCTURE" in text
+    assert "FILE: src/app.py" in text
+    assert "END FILE: src/app.py" in text
+    assert "EXCLUDED FILES" in text
+    # Plain-text contract: no Markdown headings or fences.
+    assert "## " not in text
+    assert "```" not in text
 
 
 def test_dump_subcommand_default_path(tmp_path: Path, monkeypatch):
-    """`codedumper dump` with no path dumps the current directory."""
+    """`codedumper dump` with no path dumps the current directory.
+
+    The default output lands OUTSIDE the scanned project (parent dir).
+    """
     proj = tmp_path / "cur"
     proj.mkdir()
     (proj / "a.txt").write_text("hello", encoding="utf-8")
     monkeypatch.chdir(proj)
-    out = proj / "cur.md"
     rc = main(["dump", "--force"])
     assert rc == 0
+    out = tmp_path / "cur.txt"
     assert out.exists()
+    assert not (proj / "cur.txt").exists()
+    assert "CODEBASE DUMP: cur" in out.read_text(encoding="utf-8")
+
+
+def test_dump_subcommand_markdown_format_opt_in(mini_project: Path, tmp_path: Path):
+    out = tmp_path / "dump_basic.md"
+    rc = main(["dump", str(mini_project), "-o", str(out), "--force",
+               "--format", "markdown"])
+    assert rc == 0
+    text = out.read_text(encoding="utf-8")
+    assert "# Codebase Dump: my_project" in text
+    assert "## Project Structure" in text
+    assert "## File: src/app.py" in text
+
+
+def test_dump_output_self_exclusion(tmp_path: Path):
+    """A previous dump living inside the target is never embedded."""
+    proj = tmp_path / "selfref"
+    proj.mkdir()
+    (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (proj / "selfref.txt").write_text("STALE DUMP - must not be embedded\n", encoding="utf-8")
+    out = proj / "selfref.txt"
+    rc = main(["dump", str(proj), "-o", str(out), "--force"])
+    assert rc == 0
+    text = out.read_text(encoding="utf-8")
+    assert "STALE DUMP" not in text
+    assert "OUTPUT_FILE_SELF" in text
+    assert "FILE: a.py" in text
 
 
 def test_dump_subcommand_custom_output(mini_project: Path, tmp_path: Path):
@@ -93,7 +128,7 @@ def test_dump_subcommand_exclude(mini_project: Path, tmp_path: Path):
                "--exclude", "src/*"])
     assert rc == 0
     text = out.read_text(encoding="utf-8")
-    assert "## File: src/app.py" not in text
+    assert "FILE: src/app.py" not in text
     assert "USER_EXCLUDE_PATTERN" in text
 
 
@@ -103,9 +138,9 @@ def test_dump_subcommand_include_hidden_keeps_secrets_out(mini_project: Path, tm
     rc = main(["dump", str(mini_project), "-o", str(out), "--force", "--include-hidden"])
     assert rc == 0
     text = out.read_text(encoding="utf-8")
-    assert "## File: .hidden.txt" in text
+    assert "FILE: .hidden.txt" in text
     # Sensitive files stay excluded even with --include-hidden.
-    assert "## File: .env" not in text
+    assert "FILE: .env" not in text
     assert "SENSITIVE_CREDENTIAL" in text
 
 
@@ -117,7 +152,7 @@ def test_dump_subcommand_max_file_size(mini_project: Path, tmp_path: Path):
                "--max-file-size", "1KB"])
     assert rc == 0
     text = out.read_text(encoding="utf-8")
-    assert "## File: big.txt" not in text
+    assert "FILE: big.txt" not in text
     assert "EXCEEDS_MAX_SIZE" in text
 
 
@@ -140,7 +175,7 @@ def test_dump_subcommand_no_tree(mini_project: Path, tmp_path: Path):
     out = tmp_path / "notree.md"
     rc = main(["dump", str(mini_project), "-o", str(out), "--force", "--no-tree"])
     assert rc == 0
-    assert "## Project Structure" not in out.read_text(encoding="utf-8")
+    assert "PROJECT STRUCTURE" not in out.read_text(encoding="utf-8")
 
 
 def test_dump_subcommand_help():
@@ -153,7 +188,7 @@ def test_legacy_form_still_works(mini_project: Path, tmp_path: Path):
     out = tmp_path / "legacy.md"
     rc = main([str(mini_project), "-o", str(out), "--force", "--max-size", "2MB"])
     assert rc == 0
-    assert "## Project Structure" in out.read_text(encoding="utf-8")
+    assert "PROJECT STRUCTURE" in out.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
