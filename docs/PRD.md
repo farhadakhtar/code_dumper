@@ -108,7 +108,7 @@ are real scan results; nothing is fabricated.
 
 | Requirement ID | Title | Description | Priority |
 |---|---|---|---|
-| **FR-001** | Interactive menu (1–7) + launch logo | Bare `codedumper` renders the bundled `logo.png` artwork (or a plain fallback) with a dynamic version line, then the specified menu (dump current / dump another / preview / update / exclusions / help / exit); invalid input re-prompts; EOF exits 0; Ctrl+C exits 130; piped stdin works. | High |
+| **FR-001** | Interactive menu (1–7) + wordmark | Bare `codedumper` prints the fixed green wordmark (or the plain block when color is unsupported, or nothing when the terminal is narrower than the block) with centered version/tagline lines, then the specified menu (dump current / dump another / preview / update / exclusions / help / exit); invalid input re-prompts; EOF exits 0; Ctrl+C exits 130; piped stdin works. | High |
 | **FR-002** | `dump` subcommand | `codedumper dump [PATH]` dumps the given project; `PATH` defaults to `.`. | High |
 | **FR-003** | Recursive scanning | Recursively discover directories/files under the project root. | High |
 | **FR-004** | Deterministic ordering | Stable sorted processing; identical inputs → byte-identical files (timing is console-only). | High |
