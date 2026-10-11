@@ -16,10 +16,10 @@ from typing import List, Optional
 
 import codedumper
 from codedumper.models import ScanConfig
-from codedumper.renderer import render_markdown
+from codedumper.renderer import iter_markdown_parts
 from codedumper.reporter import format_cli_summary
 from codedumper.scanner import scan_repository
-from codedumper.writer import write_dump_file
+from codedumper.writer import write_dump_stream
 
 
 BANNER = r"""
@@ -242,13 +242,15 @@ def execute_dump(
     print("[INFO] Applying exclusion rules...")
     print("[INFO] Collecting eligible files...")
 
-    # Render Markdown
-    markdown_content = render_markdown(config, result)
-
-    # Persist or dry-run
+    # Persist (streaming: the document is encoded and written piece by piece
+    # so the joined Markdown string is never materialized) or dry-run
     if not config.dry_run:
         try:
-            write_dump_file(config.output_path, markdown_content, force=config.force)
+            write_dump_stream(
+                config.output_path,
+                iter_markdown_parts(config, result),
+                force=config.force,
+            )
         except FileExistsError as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
