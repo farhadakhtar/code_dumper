@@ -532,7 +532,7 @@ def test_dump_leaves_project_untouched(tmp_path: Path, monkeypatch):
     before = _hash_tree(proj)
 
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["1", "", "6"]):
+    with patch("builtins.input", side_effect=["1", "", "7"]):
         assert run_interactive_menu() == 0
 
     assert _hash_tree(proj) == before
