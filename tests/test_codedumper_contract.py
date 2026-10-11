@@ -264,33 +264,46 @@ def test_symlink_not_followed(tmp_path: Path):
 
 
 # ---------------------------------------------------------------------------
-# Interactive menu (options 1-5)
+# Interactive menu (spec launch screen)
 # ---------------------------------------------------------------------------
 
 def test_menu_exit_option():
-    with patch("builtins.input", side_effect=["5"]):
+    with patch("builtins.input", side_effect=["6"]):
         assert run_interactive_menu() == 0
 
 
-def test_menu_banner(capsys):
-    with patch("builtins.input", side_effect=["5"]):
+def test_menu_matches_exact_spec(capsys):
+    """The launch screen must match the approved specification verbatim."""
+    with patch("builtins.input", side_effect=["6"]):
         assert run_interactive_menu() == 0
     out = capsys.readouterr().out
-    # ASCII-art logo, centered branding, exact subtitle, separator.
-    assert "####" in out
-    assert "CodeDumper" in out
-    assert "Turn your codebase into plain text." in out
-    assert "====" in out
-    assert "1. Get a code dump" in out
-    assert "2. Update the code dump" in out
-    assert "3. See GitHub" in out
-    assert "4. Check for updates and install" in out
-    assert "5. Exit" in out
+    assert out == BANNER + "\nGoodbye!\n"
+    # Spot-check the unusual numbering and spacing verbatim.
+    assert "                 CODEDUMPER CLI\n" in out
+    assert "         Turn your codebase into Markdown.\n" in out
+    assert "\n4. Update\n" in out
+    assert "\n 4. Configure exclusions\n" in out
+    assert " Select an option [1-6]:" in out
     # PowerShell/CMD-safe: menu output must be pure ASCII.
     out.encode("ascii")
     # The prompt itself is passed to input(), not printed (mocked input
     # never echoes it), so verify the constant directly.
-    assert MENU_PROMPT == "Select an option [1-5]: "
+    assert MENU_PROMPT == " Select an option [1-6]: "
+
+
+def test_menu_banner(capsys):
+    with patch("builtins.input", side_effect=["6"]):
+        assert run_interactive_menu() == 0
+    out = capsys.readouterr().out
+    assert "CODEDUMPER CLI" in out
+    assert "Turn your codebase into Markdown." in out
+    assert "1. Dump the current project" in out
+    assert "2. Dump another project" in out
+    assert "3. Preview project contents" in out
+    assert "4. Update" in out
+    assert "4. Configure exclusions" in out
+    assert "5. Help and documentation" in out
+    assert "6. Exit" in out
 
 
 def test_menu_invalid_choice_reprompts(capsys):
