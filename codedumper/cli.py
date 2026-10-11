@@ -389,14 +389,16 @@ def _menu_get_dump(target_dir: str = ".", session_excludes: Optional[List[str]] 
         if not _confirm("Overwrite it? [y/N]: "):
             print("[INFO] Dump canceled; existing file preserved.")
             return
-        rc = execute_dump(target, output_path=str(output_path), force=True)
+        rc = execute_dump(target, output_path=str(output_path), force=True,
+                           exclude_patterns=excludes)
     else:
-        rc = execute_dump(target, output_path=str(output_path))
+        rc = execute_dump(target, output_path=str(output_path),
+                           exclude_patterns=excludes)
     if rc != 0:
         print(f"[INFO] Dump finished with exit code {rc}.")
 
 
-def _menu_dump_other() -> None:
+def _menu_dump_other(session_excludes: Optional[List[str]] = None) -> None:
     """Menu option 2: prompt for a project path, then dump it."""
     try:
         path = _ask("Enter the project path: ").strip()
@@ -407,11 +409,22 @@ def _menu_dump_other() -> None:
     if not path:
         print("No path entered. Returning to the menu.")
         return
-    _menu_get_dump(path)
+    _menu_get_dump(path, session_excludes)
 
 
-def _menu_update_dump() -> None:
-    """Menu option 4 (first `4` line): regenerate the current project's `.txt` dump."""
+def _menu_configure_exclusions(session_excludes: List[str]) -> None:
+    """Menu option 5: collect extra glob patterns for this session."""
+    raw = _ask("Enter extra glob patterns, comma-separated (e.g. *.log, docs/*): ").strip()
+    new_patterns = [p.strip() for p in raw.split(",") if p.strip()]
+    if new_patterns:
+        session_excludes.extend(new_patterns)
+        print(f"[INFO] Added {len(new_patterns)} exclusion pattern(s) for this session.")
+    else:
+        print("[INFO] No patterns entered; session exclusions unchanged.")
+
+
+def _menu_update_dump(session_excludes: Optional[List[str]] = None) -> None:
+    """Menu option 4: regenerate the current project's `.txt` dump."""
     target_path = Path.cwd().resolve()
     project_name = target_path.name or "repository"
     txt_dump, legacy_dump = _find_existing_dump(target_path)
