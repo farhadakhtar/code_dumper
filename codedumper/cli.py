@@ -39,18 +39,17 @@ BANNER = """\
  2. Dump another project
 
  3. Preview project contents
+ 4. Update
 
-4. Update
+ 5. Configure exclusions
 
- 4. Configure exclusions
+ 6. Help and documentation
 
- 5. Help and documentation
-
- 6. Exit
+ 7. Exit
 
 """
 
-MENU_PROMPT = " Select an option [1-6]: "
+MENU_PROMPT = " Select an option [1-7]: "
 
 FORMAT_TEXT = "text"
 FORMAT_MARKDOWN = "markdown"
@@ -365,13 +364,14 @@ def _find_existing_dump(target_path: Path) -> tuple[Optional[Path], Optional[Pat
     return txt_dump, legacy_dump
 
 
-def _menu_get_dump(target_dir: str = ".") -> None:
-    """Menu option 1: dump a project directory to `.txt` (default: CWD)."""
+def _menu_get_dump(target_dir: str = ".", session_excludes: Optional[List[str]] = None) -> None:
+    """Menu dump flow: dump a project directory to `.txt` (default: CWD)."""
     target_path = Path(target_dir).resolve()
     if not target_path.exists() or not target_path.is_dir():
         print(f"Error: Target directory is not valid: '{target_path}'", file=sys.stderr)
         return
     target = str(target_path)
+    excludes = list(session_excludes or [])
     default_file = default_output_path(target_path, FORMAT_TEXT)
     print(f"Project: {target_path.name}")
     print(f"Default output: {default_file}")
