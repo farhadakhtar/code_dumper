@@ -49,18 +49,25 @@ project-name.md
 Clone the repository and install CodeDumper in editable mode:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/CodeDumper.git
-cd CodeDumper
+git clone https://github.com/farhadakhtar/code_dumper.git
+cd code_dumper
 python -m pip install -e .
 ```
-
-Replace `YOUR_USERNAME` with the actual repository owner.
 
 Verify the installation:
 
 ```bash
 codedumper --help
 ```
+
+> **Windows note:** if `codedumper` is reported as "not recognized", the
+> Python Scripts folder is not on your `PATH`. Either add it, or use the
+> equivalent form (works everywhere, including Linux and macOS with `python3`):
+>
+> ```bash
+> python -m codedumper --help
+> python -m codedumper dump . --dry-run
+> ```
 
 ### Option 2 — Install a published release
 
