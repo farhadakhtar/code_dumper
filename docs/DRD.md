@@ -208,6 +208,25 @@ def installed_dist_version() -> str | None: ...        # post-install verificati
 def run_update_interactive() -> int: ...               # full menu flow, always returns to menu
 ```
 
+### 3.10 `logo` — image-backed launch art (TR-022)
+
+```python
+LOGO_FILENAME: str = "logo.png"      # bundled asset, byte-identical to root logo.png
+def logo_asset_path() -> Path | None: ...        # importlib.resources + source fallback
+def decode_png_rgba(data: bytes) -> tuple: ...   # stdlib 8-bit decoder (types 0/2/4/6)
+def terminal_supports_truecolor(stream, env) -> bool: ...  # conservative gate
+def fit_size(w, h, cols, max_rows) -> tuple: ... # aspect-preserving fit
+def downscale_rgba(...) -> bytes: ...            # box average, composited on black
+def render_half_blocks(small, cols, rows) -> str: ...  # ▄ true-color cells
+def render_logo_for_width(cols, ...) -> str | None: ...  # None → plain fallback
+def print_launch_logo(stream, width) -> bool: ...       # never raises
+```
+
+Launch shows the rendered artwork plus a dynamic `v<installed>` line, then
+the options block. Pipes, `NO_COLOR`, `dumb` terminals, legacy consoles,
+missing/corrupt assets, and narrow windows (<40 cols) all fall back to the
+plain version + menu with no fake replacement logo.
+
 ### 3.8 Suggested-module mapping (README §"Technical design")
 
 | Suggested | Actual home | Note |
@@ -232,14 +251,17 @@ gain.
 ```mermaid
 flowchart TD
     Invoke([codedumper invocation]) --> HasArgs{Arguments?}
-    HasArgs -->|None| Menu[Interactive menu 1..6]
+    HasArgs -->|None| Logo[Render logo.png art or plain fallback]
+    Logo --> Menu[Interactive menu 1..7]
     HasArgs -->|First token is dump| Sub[Parse dump subcommand]
     HasArgs -->|Otherwise| Leg[Parse legacy form]
     Menu -->|1| Get[Dump CWD to .txt, path prompt]
-    Menu -->|2| Update[Find .txt → confirm → regenerate / offer create]
-    Menu -->|3| Browser[Open official repo / helpful error]
-    Menu -->|4| Updater[Check → confirm → install → verify]
-    Menu -->|5/EOF| Exit0([Exit 0])
+    Menu -->|2| Other[Prompt path → dump it]
+    Menu -->|3| Dry[Dry-run preview]
+    Menu -->|4| Update[Find .txt → confirm → regenerate / offer create]
+    Menu -->|5| Excl[Session exclusion globs]
+    Menu -->|6| Help[Print help]
+    Menu -->|7/EOF| Exit0([Exit 0])
     Sub --> Val{Valid?}
     Leg --> Val
     Val -->|No| Exit1[Exit 1]
@@ -280,7 +302,8 @@ flowchart TD
 
 ## 5. Security & Safety Design
 
-1. Offline-only; no network imports in `codedumper`.
+1. Dump flows are offline-only (no sockets, uploads, or telemetry); only
+   the updater reads release metadata over HTTPS.
 2. Unbypassable sensitive tier; filename-only reporting.
 3. Symlinks never followed; depth guard; root containment via `resolve()`.
 4. Read-only source access; atomic destination writes.
@@ -307,6 +330,11 @@ flowchart TD
 - **Updater honesty over automation:** with no published releases, the only
   live behavior is the unavailable state + manual route; the install path
   is fully implemented but proven by mocked tests, never by live runs.
+- **Image-backed logo, honest fidelity:** the launch art is decoded from the
+  bundled `logo.png` (no redrawn ASCII substitute); character cells cannot
+  reproduce pixels 1:1, so downscaling softens the small baked-in tagline
+  and version label — the live version is therefore also printed as text.
+  Terminals without true-color get the plain menu, never a fake logo.
 - **Streaming writes, in-memory model kept:** the CLI persists via
   `iter_markdown_parts` + `write_dump_stream` (peak ≈ contents size, measured
   50.3 MB at 48.8 MB text), while `ScanResult` still holds file contents and
