@@ -1,3 +1,0 @@
-# Include the bundled terminal logo artwork in source distributions.
-# (Wheels pick it up via [tool.setuptools.package-data] in pyproject.toml.)
-include codedumper/logo.png
