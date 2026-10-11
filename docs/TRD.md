@@ -275,3 +275,4 @@ box; environmental, not gated); ~50 MB text under 100 MB tracemalloc peak
 | TR-019 | NFR-011 | `LICENSE` + license metadata |
 | TR-020 | FR-021/FR-022 | `cli.py` update flow + browser opener |
 | TR-021 | FR-023/FR-024/FR-025 | `updater.py` check/install isolation |
+| TR-022 | FR-001/NFR-008 | `logo.py` image art + fallback + `logo.png` asset |
