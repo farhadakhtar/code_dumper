@@ -364,11 +364,15 @@ def _find_existing_dump(target_path: Path) -> tuple[Optional[Path], Optional[Pat
     return txt_dump, legacy_dump
 
 
-def _menu_get_dump() -> None:
-    """Menu option 1: dump the current working directory to `.txt`."""
-    target = str(Path.cwd().resolve())
-    default_file = default_output_path(Path.cwd().resolve(), FORMAT_TEXT)
-    print(f"Project: {Path.cwd().resolve().name}")
+def _menu_get_dump(target_dir: str = ".") -> None:
+    """Menu option 1: dump a project directory to `.txt` (default: CWD)."""
+    target_path = Path(target_dir).resolve()
+    if not target_path.exists() or not target_path.is_dir():
+        print(f"Error: Target directory is not valid: '{target_path}'", file=sys.stderr)
+        return
+    target = str(target_path)
+    default_file = default_output_path(target_path, FORMAT_TEXT)
+    print(f"Project: {target_path.name}")
     print(f"Default output: {default_file}")
     try:
         raw = _ask(f"Output path [{default_file}] (Enter to accept): ").strip()
@@ -391,8 +395,22 @@ def _menu_get_dump() -> None:
         print(f"[INFO] Dump finished with exit code {rc}.")
 
 
+def _menu_dump_other() -> None:
+    """Menu option 2: prompt for a project path, then dump it."""
+    try:
+        path = _ask("Enter the project path: ").strip()
+    except _MenuExit as e:
+        if e.code != 0:
+            raise
+        return
+    if not path:
+        print("No path entered. Returning to the menu.")
+        return
+    _menu_get_dump(path)
+
+
 def _menu_update_dump() -> None:
-    """Menu option 2: regenerate the current project's existing `.txt` dump."""
+    """Menu option 4 (first `4` line): regenerate the current project's `.txt` dump."""
     target_path = Path.cwd().resolve()
     project_name = target_path.name or "repository"
     txt_dump, legacy_dump = _find_existing_dump(target_path)
@@ -421,7 +439,7 @@ def _menu_update_dump() -> None:
 
 
 def _menu_open_github() -> None:
-    """Menu option 3: open the official repository in the default browser."""
+    """Open the official repository in the default browser (tested directly)."""
     print(f"Opening: {GITHUB_REPO_URL}")
     try:
         opened = webbrowser.open(GITHUB_REPO_URL)
@@ -437,7 +455,13 @@ def _menu_open_github() -> None:
 
 
 def run_interactive_menu() -> int:
-    """Launch the interactive CodeDumper menu. Returns the exit code."""
+    """Launch the interactive CodeDumper menu. Returns the exit code.
+
+    Display matches the approved launch-screen specification verbatim
+    (including its unusual numbering). Input ``4`` runs the update-dump
+    flow: it is the first of the two ``4`` lines, which keeps every
+    dump capability reachable from the menu.
+    """
     print(BANNER)
     try:
         while True:
@@ -445,16 +469,18 @@ def run_interactive_menu() -> int:
             if choice == "1":
                 _menu_get_dump()
             elif choice == "2":
-                _menu_update_dump()
+                _menu_dump_other()
             elif choice == "3":
-                _menu_open_github()
+                execute_dump(".", dry_run=True)
             elif choice == "4":
-                run_update_interactive()
+                _menu_update_dump()
             elif choice == "5":
+                print(build_parser().format_help())
+            elif choice == "6":
                 print("Goodbye!")
                 return 0
             else:
-                print(f"Invalid choice: '{choice}'. Please select an option [1-5].")
+                print(f"Invalid choice: '{choice}'. Please select an option [1-6].")
     except _MenuExit as e:
         return e.code
 
