@@ -197,7 +197,7 @@ reach the dump under any flag combination.
 ## 6. CLI Contract (normative)
 
 ```text
-codedumper                              # interactive menu (options 1-7 + logo)
+codedumper                              # interactive menu (options 1-7 + wordmark)
 codedumper dump [PATH] [OPTIONS]        # primary non-interactive form
 codedumper [PATH] [OPTIONS]             # legacy form
 ```
