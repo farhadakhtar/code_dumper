@@ -111,6 +111,13 @@ Terminals without true-color support (classic conhost, pipes,
 show the same version line and menu instead — never a fake replacement
 logo.
 
+> Troubleshooting a missing logo: run with `CODEDUMPER_LOGO_DEBUG=1`
+> (e.g. `$env:CODEDUMPER_LOGO_DEBUG=1; codedumper`) to print the exact
+> fallback reason (`not-a-tty`, `no-color`, `dumb-terminal`,
+> `no-truecolor-indicators`, `narrow-window`, `asset-missing`,
+> `decode-failed`, `encoding`, `write-failed`) to stderr. A common cause
+> on Windows is a non-UTF-8 console code page: run `chcp 65001` and retry.
+
 - **1. Dump the current project:** scans the current directory and writes
   `<project-name>.txt` next to the project (outside it, so later scans
   never re-ingest the dump). You may accept the default path or type

@@ -213,19 +213,21 @@ def run_update_interactive() -> int: ...               # full menu flow, always 
 ```python
 LOGO_FILENAME: str = "logo.png"      # bundled asset, byte-identical to root logo.png
 def logo_asset_path() -> Path | None: ...        # importlib.resources + source fallback
+def logo_asset_bytes(asset=None) -> bytes | None: ...  # resources byte access (zip-safe)
 def decode_png_rgba(data: bytes) -> tuple: ...   # stdlib 8-bit decoder (types 0/2/4/6)
 def terminal_supports_truecolor(stream, env) -> bool: ...  # conservative gate
-def fit_size(w, h, cols, max_rows) -> tuple: ... # aspect-preserving fit
-def downscale_rgba(...) -> bytes: ...            # box average, composited on black
-def render_half_blocks(small, cols, rows) -> str: ...  # ▄ true-color cells
-def render_logo_for_width(cols, ...) -> str | None: ...  # None → plain fallback
-def print_launch_logo(stream, width) -> bool: ...       # never raises
+def diagnose_launch_logo(stream, env, width) -> LaunchDiagnosis: ...  # reason-coded outcome
+def print_launch_logo(stream, width, env) -> bool: ...     # never raises; debug env gated
 ```
 
 Launch shows the rendered artwork plus a dynamic `v<installed>` line, then
-the options block. Pipes, `NO_COLOR`, `dumb` terminals, legacy consoles,
-missing/corrupt assets, and narrow windows (<40 cols) all fall back to the
-plain version + menu with no fake replacement logo.
+the options block. Pipes, `NO_COLOR`, `dumb` terminals, missing truecolor
+indicators, legacy consoles, missing/corrupt assets, unencodable output,
+and narrow windows (<40 cols) all fall back to the plain version + menu
+with no fake replacement logo. Every fallback carries a stable reason
+(`not-a-tty`, `no-color`, `dumb-terminal`, `no-truecolor-indicators`,
+`narrow-window`, `asset-missing`, `decode-failed`, `encoding`,
+`write-failed`); `CODEDUMPER_LOGO_DEBUG=1` prints it to stderr.
 
 ### 3.8 Suggested-module mapping (README §"Technical design")
 
