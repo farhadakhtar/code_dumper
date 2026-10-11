@@ -177,13 +177,13 @@ MENU_PROMPT: str                     # "Select an option [1-7]: "
 def build_parser() -> argparse.ArgumentParser: ...   # dump subcommand + legacy
 def parse_size_str(val: str) -> int: ...             # B/KB/MB/GB grammar
 def default_output_path(target: Path, format: str) -> Path: ...  # outside-project rule
-def run_interactive_menu() -> int: ...               # logo + version + options 1-7
+def run_interactive_menu() -> int: ...               # wordmark + version + options 1-7
 def execute_dump(target_dir, output_path, force, exclude_patterns,  # shared dump pipeline
                  include_hidden, max_size, no_tree, dry_run, dump_format) -> int: ...
 def main(argv: list[str] | None = None) -> int: ...
 ```
 
-Launch: `logo.print_launch_logo()` (art or silent fallback) →
+Launch: `print_wordmark()` (green, plain, or skipped) →
 `v<installed>` version line → `MENU_BODY` → prompt loop.
 Dispatch: `1` dump CWD (output-path prompt); `2` prompt path then dump;
 `3` dry-run preview; `4` update-dump flow with confirmation; `5` session
