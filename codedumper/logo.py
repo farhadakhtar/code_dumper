@@ -14,8 +14,10 @@ pixel-perfect reproduction:
   even when no environment indicator says so; legacy consoles, pipes, and
   ``NO_COLOR``/``dumb`` terminals get a graceful plain fallback (menu
   only, no fake replacement logo).
-- The aspect ratio is preserved (no stretching or clipping); narrow
-  windows scale the art down, and very narrow windows skip it.
+- The aspect ratio is preserved (no stretching or clipping); the art is
+  capped at a maximum width, centered with plain leading spaces, and
+  narrow windows scale it down — windows too narrow for a reasonable
+  rendering fall back to plain output.
 - Every fallback path reports a machine-readable reason through
   :func:`diagnose_launch_logo` (reasons also asserted in tests). Set
   ``CODEDUMPER_LOGO_DEBUG=1`` to print the reason to stderr on real
