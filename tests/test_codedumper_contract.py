@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
+from codedumper import logo
 from codedumper.cli import MENU_BODY, MENU_PROMPT, _menu_open_github, execute_dump, main, run_interactive_menu
 from codedumper.models import ScanConfig
 from codedumper.renderer import render_markdown
