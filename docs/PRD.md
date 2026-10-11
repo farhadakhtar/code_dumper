@@ -81,9 +81,10 @@ are real scan results; nothing is fabricated.
 
 ### 2.2 Key Workflows
 
-- **W-1 Get a dump (menu `1`):** User runs `codedumper` in a project (logo
-  launch), picks `1`, accepts (or overrides) the default `<name>.txt` path
-  outside the project, receives the file plus a real-counts summary.
+- **W-1 Get a dump (menu `1`):** User runs `codedumper` in a project
+  (wordmark launch), picks `1`, accepts (or overrides) the default
+  `<name>.txt` path outside the project, receives the file plus a
+  real-counts summary.
 - **W-2 Dump another (menu `2`):** User picks `2`, enters a project path,
   and gets its dump the same way.
 - **W-3 Preview (menu `3`):** Dry-run scan of the current directory with
