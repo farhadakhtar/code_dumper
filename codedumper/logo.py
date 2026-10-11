@@ -596,6 +596,6 @@ def print_launch_logo(stream=None, width: Optional[int] = None,
             print(f"[codedumper-logo] shown={diagnosis.shown} "
                   f"reason={diagnosis.reason} {diagnosis.detail}".rstrip(),
                   file=_sys.stderr)
-        except OSError:
+        except (OSError, UnicodeEncodeError, ValueError):
             pass
     return diagnosis.shown
