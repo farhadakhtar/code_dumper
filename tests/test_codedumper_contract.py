@@ -283,7 +283,6 @@ def test_menu_matches_exact_spec(capsys):
     assert "         Turn your codebase into Markdown.\n" in out
     assert "\n4. Update\n" in out
     assert "\n 4. Configure exclusions\n" in out
-    assert " Select an option [1-6]:" in out
     # PowerShell/CMD-safe: menu output must be pure ASCII.
     out.encode("ascii")
     # The prompt itself is passed to input(), not printed (mocked input
