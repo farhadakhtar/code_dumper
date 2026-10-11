@@ -14,6 +14,11 @@ def scan_repository(config: ScanConfig) -> ScanResult:
     start_time = time.perf_counter()
     target_dir = config.target_dir.resolve()
     project_name = target_dir.name or "repository"
+    # Resolved once: the dump output itself must never be embedded, even
+    # when it lives inside the scanned project (e.g. --output pointing
+    # there, or a previous dump from an earlier run).
+    output_resolved = config.output_path.resolve()
+    output_name = output_resolved.name
 
     filter_engine = ExclusionEngine(
         user_patterns=config.exclude_patterns,
@@ -84,6 +89,11 @@ def scan_repository(config: ScanConfig) -> ScanResult:
                 file_size = st.st_size
             except OSError as e:
                 omitted_files.append(OmissionRecord(rel_path=rel_path, reason=f"STAT_ERROR: {e}", size=0))
+                continue
+
+            # Step 0: Never embed the dump output file itself.
+            if file_path.name == output_name and file_path.resolve() == output_resolved:
+                omitted_files.append(OmissionRecord(rel_path=rel_path, reason="OUTPUT_FILE_SELF", size=file_size))
                 continue
 
             # Step 1: Rule filtering (sensitive, noise, hidden, user glob, max size)
