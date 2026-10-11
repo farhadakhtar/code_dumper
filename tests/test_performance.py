@@ -79,7 +79,28 @@ def _config_for(proj: Path, out_name: str) -> ScanConfig:
     )
 
 
-def test_benchmark_scan_render_write_under_two_seconds(big_project: Path):
+def test_benchmark_cold_first_scan_correct(fresh_project: Path):
+    """NFR-001 (cold): first scan of freshly created files.
+
+    First-touch cost is environmental (OS page cache misses, on-access
+    antivirus scanning of new files) and varies by machine, so this test
+    asserts correctness and a loose regression guardrail while reporting
+    the measured number. The hard <2.0 s gate applies to the warm test.
+    """
+    config = _config_for(fresh_project, "bench_cold.md")
+    started = time.perf_counter()
+    result = scan_repository(config)
+    written = write_dump_stream(
+        config.output_path, iter_markdown_parts(config, result), force=True
+    )
+    elapsed = time.perf_counter() - started
+    print(f"\nbenchmark (cold, first touch): {len(result.included_files)} files in {elapsed:.2f}s")
+    assert len(result.included_files) == FILE_COUNT
+    assert written > 0
+    assert elapsed < COLD_TIME_GUARDRAIL_SECONDS
+
+
+def test_benchmark_warm_scan_stream_write_under_two_seconds(big_project: Path):
     # Methodology: one untimed warm-up pass first so OS page cache and any
     # on-access file scanning settle — the requirement targets steady-state
     # throughput on real (pre-existing) repositories, not first-touch cost
@@ -91,11 +112,10 @@ def test_benchmark_scan_render_write_under_two_seconds(big_project: Path):
     started = time.perf_counter()
     result = scan_repository(config)
     assert len(result.included_files) == FILE_COUNT
-    markdown = render_markdown(config, result)
-    write_dump_file(config.output_path, markdown, force=True)
+    write_dump_stream(config.output_path, iter_markdown_parts(config, result), force=True)
     elapsed = time.perf_counter() - started
-    print(f"\nbenchmark: {len(result.included_files)} files in {elapsed:.2f}s")
-    assert elapsed < TIME_BUDGET_SECONDS
+    print(f"\nbenchmark (warm): {len(result.included_files)} files in {elapsed:.2f}s")
+    assert elapsed < WARM_TIME_BUDGET_SECONDS
 
 
 def test_benchmark_peak_memory_under_100mb(big_project: Path):
@@ -103,13 +123,23 @@ def test_benchmark_peak_memory_under_100mb(big_project: Path):
     tracemalloc.start()
     try:
         result = scan_repository(config)
-        markdown = render_markdown(config, result)
-        write_dump_file(config.output_path, markdown, force=True)
+        write_dump_stream(config.output_path, iter_markdown_parts(config, result), force=True)
         _, peak = tracemalloc.get_traced_memory()
     finally:
         tracemalloc.stop()
     print(f"\nbenchmark: tracemalloc peak {peak / (1024 * 1024):.1f} MB")
     assert peak < MEMORY_BUDGET_BYTES
+
+
+def test_benchmark_stream_matches_in_memory_render(big_project: Path, tmp_path: Path):
+    """The production streaming path must be byte-identical to render_markdown."""
+    config = _config_for(big_project, "bench_stream.md")
+    result = scan_repository(config)
+    in_memory = render_markdown(config, result).encode("utf-8")
+    stream_out = tmp_path / "streamed.md"
+    stream_config = ScanConfig(target_dir=big_project, output_path=stream_out)
+    write_dump_stream(stream_config.output_path, iter_markdown_parts(stream_config, result), force=True)
+    assert stream_out.read_bytes() == in_memory
 
 
 def test_benchmark_output_deterministic(big_project: Path):
