@@ -447,7 +447,7 @@ def _menu_update_dump(session_excludes: Optional[List[str]] = None) -> None:
     else:
         print(f"No existing dump found for '{project_name}'.")
     if _confirm("Create a new code dump now? [y/N]: "):
-        _menu_get_dump()
+        _menu_get_dump(".", session_excludes)
     else:
         print("[INFO] No dump created.")
 
@@ -471,30 +471,30 @@ def _menu_open_github() -> None:
 def run_interactive_menu() -> int:
     """Launch the interactive CodeDumper menu. Returns the exit code.
 
-    Display matches the approved launch-screen specification verbatim
-    (including its unusual numbering). Input ``4`` runs the update-dump
-    flow: it is the first of the two ``4`` lines, which keeps every
-    dump capability reachable from the menu.
+    Display matches the approved launch-screen specification verbatim.
     """
     print(BANNER)
+    session_excludes: List[str] = []
     try:
         while True:
             choice = (_ask(MENU_PROMPT) or "").strip()
             if choice == "1":
-                _menu_get_dump()
+                _menu_get_dump(".", session_excludes)
             elif choice == "2":
-                _menu_dump_other()
+                _menu_dump_other(session_excludes)
             elif choice == "3":
                 execute_dump(".", dry_run=True)
             elif choice == "4":
-                _menu_update_dump()
+                _menu_update_dump(session_excludes)
             elif choice == "5":
-                print(build_parser().format_help())
+                _menu_configure_exclusions(session_excludes)
             elif choice == "6":
+                print(build_parser().format_help())
+            elif choice == "7":
                 print("Goodbye!")
                 return 0
             else:
-                print(f"Invalid choice: '{choice}'. Please select an option [1-6].")
+                print(f"Invalid choice: '{choice}'. Please select an option [1-7].")
     except _MenuExit as e:
         return e.code
 
