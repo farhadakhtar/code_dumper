@@ -326,14 +326,12 @@ flowchart TD
 - **Updater honesty over automation:** with no published releases, the only
   live behavior is the unavailable state + manual route; the install path
   is fully implemented but proven by mocked tests, never by live runs.
-- **Image-backed logo, honest fidelity:** the launch art is decoded from the
-  bundled `logo.png` (no redrawn ASCII substitute); character cells cannot
-  reproduce pixels 1:1, so downscaling softens the small baked-in tagline
-  and version label — the live version is therefore also printed as text.
-  Art is capped, centered, and aspect-correct; `▄` pairs foreground=bottom
-  pixel with background=top pixel (the only correct mapping), with per-row
-  resets and no trailing whitespace.
-  Terminals without true-color get the plain menu, never a fake logo.
+- **Fixed wordmark, honest fidelity:** the launch shows a fixed green
+  `CODE DUMPER` block-letter string (outlined, segmented style; builder-
+  aligned columns; bold green + reset), not a redrawn image and not a
+  generic `#` font. Glyph proportions were normalized to a fixed grid so
+  the block fits common terminal widths; narrow terminals show the menu
+  without it rather than a wrapped, misaligned logo.
 - **Streaming writes, in-memory model kept:** the CLI persists via
   `iter_markdown_parts` + `write_dump_stream` (peak ≈ contents size, measured
   50.3 MB at 48.8 MB text), while `ScanResult` still holds file contents and

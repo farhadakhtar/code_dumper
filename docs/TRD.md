@@ -16,9 +16,10 @@
 - **CLI:** Standard-library `argparse` with a `dump` subcommand + legacy
   positional form + interactive `input()` menu (options 1–7). *Rationale:*
   zero-dependency, testable, beginner-friendly with scriptable direct forms.
-- **Launch logo:** bundled `logo.png` decoded with stdlib `zlib` + `struct`
-  and rendered as true-color ANSI half-blocks; conservative capability gate
-  with a plain-menu fallback; no imaging dependency.
+- **Launch wordmark:** fixed green `CODE DUMPER` block-letter string
+  (bold green + reset); identical block without color when unsupported;
+  skipped (menu unaffected) when the terminal is narrower than the block.
+  No imaging dependency, no network, no asset files.
 - **Filesystem:** `pathlib.Path` + `os.replace` (atomic write), `os.fsync`.
 - **Matching:** `fnmatch` glob engine for `--exclude` patterns.
 - **Binary/encoding:** 8,192-byte sample (null byte → binary; >30% non-text
@@ -231,15 +232,11 @@ network or installs; determinism via SHA-256 equality; `--max-file-size`
 units + rejection; no project modification by any flow. Temp projects only;
 no real secrets.
 
-Launch-logo gates (`tests/test_logo.py`): bundled asset provenance (hash),
-real-pixel content, decoder edge cases (all color types, bad input),
-gamma-correct midpoint + ramp order/distinctness, hybrid brand lines
-(centering, narrow skip, dynamic version), capability matrix (tty/`NO_COLOR`/`TERM`/Windows Terminal/ConEmu/mintty),
-Windows console VT probing (pure decision logic + fake-handle tests),
-aspect fit and narrow-window behavior, missing/invalid asset and
-unwritable-stream safety, reason-coded fallback diagnosis for every cause,
-opt-in debug output, encoding precheck/reconfigure paths, dynamic version
-line, no duplicated tagline/heading text, and packaging declarations.
+Launch-wordmark gates (`tests/test_wordmark.py`): exact block structure
+(6 rows, aligned columns, style vocabulary, reference letterforms, no
+trailing whitespace, fits common widths); green application + reset;
+color policy (`NO_COLOR`/`dumb`/`CLICOLOR_FORCE`/tty); narrow skip;
+unwritable/unencodable stream safety; no competing renderer remains.
 
 Performance/memory gates (NFR-001/002) are enforced by
 `tests/test_performance.py` on the production streaming path
