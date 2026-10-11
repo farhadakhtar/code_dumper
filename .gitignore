@@ -71,6 +71,7 @@ yarn-error.log*
 
 # --- Logs & runtime state ---
 *.log
+*.err
 logs/
 autocommit_state.json
 
