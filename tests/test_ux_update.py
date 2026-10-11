@@ -1,6 +1,6 @@
 """Tests for the v1.1 UX refactor: new menu, `.txt` contract, updater.
 
-- Interactive menu options 1-5 (with mocked browser/updater where needed).
+- Interactive menu options 1-7 (with mocked browser/updater where needed).
 - Plain-text output contract: no Markdown headings or fences, verbatim
   source, FILE/END FILE markers, metadata lines.
 - Update flows: missing/existing dumps, confirmations, cancellation.
