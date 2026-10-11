@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import codedumper
+from codedumper.logo import print_launch_logo
 from codedumper.models import ScanConfig
 from codedumper.renderer import iter_markdown_parts, iter_text_parts
 from codedumper.reporter import format_cli_summary
@@ -28,12 +29,9 @@ from codedumper.updater import GITHUB_REPO_URL
 from codedumper.writer import write_dump_stream
 
 
-BANNER = """\
-CODEDUMPER CLI
-
-         Turn your codebase into Markdown.
-
-
+# Menu options block (byte-stable; the launch logo above it is rendered
+# from the bundled logo.png artwork, never from text art).
+MENU_BODY = """\
  1. Dump the current project
  2. Dump another project
  3. Preview project contents
@@ -468,7 +466,10 @@ def run_interactive_menu() -> int:
 
     Display matches the approved launch-screen specification verbatim.
     """
-    print(BANNER)
+    print_launch_logo()
+    print(f"v{codedumper.__version__}")
+    print()
+    print(MENU_BODY)
     session_excludes: List[str] = []
     try:
         while True:
