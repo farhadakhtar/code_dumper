@@ -44,6 +44,9 @@ codedumper = "codedumper.cli:main"
 where = ["."]
 include = ["codedumper*", "autocommit*"]
 
+[tool.setuptools.package-data]
+codedumper = ["logo.png"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
