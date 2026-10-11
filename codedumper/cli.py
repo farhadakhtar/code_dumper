@@ -623,7 +623,7 @@ def run_interactive_menu() -> int:
 
     Display matches the approved launch-screen specification verbatim.
     """
-    print_launch_logo()
+    print_wordmark()
     for line in format_brand_lines(terminal_width(), codedumper.__version__):
         print(line)
     print()
