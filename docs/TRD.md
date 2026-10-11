@@ -180,8 +180,14 @@ symlinks/traversal; fence escaping; output creation/overwrite/invalid args;
 `--max-file-size` units + rejection. Temp projects only; no real secrets.
 
 Performance/memory gates (NFR-001/002) are enforced by
-`tests/test_performance.py`: a generated 1,000-file fixture must complete
-scan + render + write in under 2.0 s with a tracemalloc peak under 100 MB.
+`tests/test_performance.py` on the production streaming path
+(scan → `iter_markdown_parts` → `write_dump_stream`):
+warm 1,000-file run (~15 MB) under 2.0 s (measured ~1.0 s) after one
+untimed warm-up pass; cold first-touch run asserted correct with a loose
+<60 s regression guardrail (measured ~12 s on a Defender-guarded Windows
+box; environmental, not gated); ~50 MB text under 100 MB tracemalloc peak
+(measured 48.8 MB → 50.3 MB). Streamed bytes are asserted identical to
+`render_markdown` output.
 
 ---
 

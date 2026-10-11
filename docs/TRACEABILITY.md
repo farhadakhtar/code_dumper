@@ -44,8 +44,8 @@ updated in Phase 4.
 
 | ID | Category | TRD | DRD / Section | Verification | Status |
 |---|---|---|---|---|---|
-| NFR-001 | Performance | TR-013 | scanner/renderer | `tests/test_performance.py` (1,000 files < 2.0 s) | Verified (measured 1.01 s) |
-| NFR-002 | Memory | TR-013 | renderer/writer | `tests/test_performance.py` (tracemalloc peak < 100 MB) | Verified (measured 89.6 MB at 15 MB scale) |
+| NFR-001 | Performance | TR-013 | scanner/renderer | `tests/test_performance.py`: warm 1,000 files (~15 MB) < 2.0 s; cold correctness + <60 s guardrail | Verified (warm 1.09 s, cold 11.94 s correct) |
+| NFR-002 | Memory | TR-013 | renderer/writer | `tests/test_performance.py`: ~50 MB text, tracemalloc peak < 100 MB, streaming path | Verified (48.8 MB → 50.3 MB peak) |
 | NFR-003 | Portability | TR-014 | models/scanner | POSIX/`\n` tests, 3.10–3.12; clean-venv wheel install + arbitrary-cwd run | Verified (wheel install + unrelated-project scan) |
 | NFR-004 | Security | TR-015 | writer/scanner | no-upload, no-follow, read-only, filename-only reports | Verified (contract + engine suites) |
 | NFR-005 | Reliability | TR-015 | scanner/writer | checksums, atomic-write tests | Verified (v1 suite) |
