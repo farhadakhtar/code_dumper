@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from codedumper.cli import BANNER, MENU_PROMPT, execute_dump, main, run_interactive_menu
+from codedumper.cli import BANNER, MENU_PROMPT, _menu_open_github, execute_dump, main, run_interactive_menu
 from codedumper.models import ScanConfig
 from codedumper.renderer import render_markdown
 from codedumper.scanner import scan_repository
@@ -401,7 +401,7 @@ def test_menu_update_existing_dump_with_confirmation(tmp_path: Path, monkeypatch
     existing = tmp_path / "updproj.txt"
     existing.write_text("STALE CONTENT", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["2", "y", "5"]):
+    with patch("builtins.input", side_effect=["4", "y", "6"]):
         assert run_interactive_menu() == 0
     text = existing.read_text(encoding="utf-8")
     assert "STALE CONTENT" not in text
@@ -415,7 +415,7 @@ def test_menu_update_decline_preserves_dump(tmp_path: Path, monkeypatch):
     existing = tmp_path / "updkeep.txt"
     existing.write_text("KEEP ME", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["2", "n", "5"]):
+    with patch("builtins.input", side_effect=["4", "n", "6"]):
         assert run_interactive_menu() == 0
     assert existing.read_text(encoding="utf-8") == "KEEP ME"
 
@@ -425,7 +425,7 @@ def test_menu_update_missing_dump_offers_create(tmp_path: Path, monkeypatch, cap
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["2", "y", "", "5"]):
+    with patch("builtins.input", side_effect=["4", "y", "", "6"]):
         assert run_interactive_menu() == 0
     out = tmp_path / "freshproj.txt"
     assert out.exists()
@@ -437,7 +437,7 @@ def test_menu_update_missing_dump_decline(tmp_path: Path, monkeypatch):
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["2", "n", "5"]):
+    with patch("builtins.input", side_effect=["4", "n", "6"]):
         assert run_interactive_menu() == 0
     assert not (tmp_path / "nodump.txt").exists()
 
@@ -449,7 +449,7 @@ def test_menu_update_leaves_legacy_markdown_alone(tmp_path: Path, monkeypatch, c
     legacy = proj / "legacyproj.md"
     legacy.write_text("LEGACY MARKDOWN", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["2", "n", "5"]):
+    with patch("builtins.input", side_effect=["4", "n", "6"]):
         assert run_interactive_menu() == 0
     assert legacy.read_text(encoding="utf-8") == "LEGACY MARKDOWN"
     assert "legacy" in capsys.readouterr().out.lower()
@@ -463,8 +463,7 @@ def test_menu_open_github_success(monkeypatch, capsys):
         return True
 
     monkeypatch.setattr("webbrowser.open", fake_open)
-    with patch("builtins.input", side_effect=["3", "5"]):
-        assert run_interactive_menu() == 0
+    _menu_open_github()
     assert opened == ["https://github.com/farhadakhtar/code_dumper"]
     assert "github.com/farhadakhtar/code_dumper" in capsys.readouterr().out
 
@@ -474,14 +473,13 @@ def test_menu_open_github_failure(monkeypatch, capsys):
         raise RuntimeError("no browser")
 
     monkeypatch.setattr("webbrowser.open", fake_open)
-    with patch("builtins.input", side_effect=["3", "5"]):
-        assert run_interactive_menu() == 0
+    _menu_open_github()
     captured = capsys.readouterr()
     assert "could not be opened" in (captured.out + captured.err).lower()
 
 
 def test_bare_main_launches_menu(monkeypatch):
-    with patch("builtins.input", side_effect=["5"]) as mock_input:
+    with patch("builtins.input", side_effect=["6"]) as mock_input:
         assert main([]) == 0
     mock_input.assert_called_once()
 
