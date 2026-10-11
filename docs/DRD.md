@@ -343,6 +343,9 @@ flowchart TD
   bundled `logo.png` (no redrawn ASCII substitute); character cells cannot
   reproduce pixels 1:1, so downscaling softens the small baked-in tagline
   and version label — the live version is therefore also printed as text.
+  Art is capped, centered, and aspect-correct; `▄` pairs foreground=bottom
+  pixel with background=top pixel (the only correct mapping), with per-row
+  resets and no trailing whitespace.
   Terminals without true-color get the plain menu, never a fake logo.
 - **Streaming writes, in-memory model kept:** the CLI persists via
   `iter_markdown_parts` + `write_dump_stream` (peak ≈ contents size, measured
