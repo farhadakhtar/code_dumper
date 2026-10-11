@@ -3,7 +3,7 @@
 import time
 from pathlib import Path
 from typing import List, Tuple
-from codedumper.classifier import detect_language, is_binary_file, read_text_safely
+from codedumper.classifier import decode_bytes_safely, detect_language, is_binary_bytes
 from codedumper.filter import ExclusionEngine
 from codedumper.models import FileItem, OmissionRecord, ScanConfig, ScanResult
 from codedumper.tree import generate_directory_tree
@@ -99,14 +99,22 @@ def scan_repository(config: ScanConfig) -> ScanResult:
                 omitted_files.append(OmissionRecord(rel_path=rel_path, reason=skip_reason, size=file_size))
                 continue
 
-            # Step 2: Binary check
-            if is_binary_file(file_path):
+            # Steps 2+3: Single read per file; classify the bytes, then decode.
+            # (One open instead of two: binary sampling and text ingestion
+            # share the same read.)
+            try:
+                with open(file_path, "rb") as f:
+                    raw_bytes = f.read()
+            except OSError as e:
+                omitted_files.append(OmissionRecord(rel_path=rel_path, reason=f"READ_ERROR: {e}", size=file_size))
+                continue
+
+            if is_binary_bytes(raw_bytes, suffix=file_path.suffix):
                 omitted_files.append(OmissionRecord(rel_path=rel_path, reason="BINARY_FILE", size=file_size))
                 continue
 
-            # Step 3: Text ingestion
             try:
-                content, _ = read_text_safely(file_path)
+                content, _ = decode_bytes_safely(raw_bytes)
                 # Normalize line endings to \n
                 content = content.replace("\r\n", "\n").replace("\r", "\n")
                 lang = detect_language(file_path)

@@ -44,17 +44,17 @@ updated in Phase 4.
 
 | ID | Category | TRD | DRD / Section | Verification | Status |
 |---|---|---|---|---|---|
-| NFR-001 | Performance | TR-013 | scanner/renderer | `tests/test_performance.py` (1,000 files < 2.0 s) | To verify |
-| NFR-002 | Memory | TR-013 | renderer/writer | `tests/test_performance.py` (tracemalloc peak < 100 MB) | To verify |
-| NFR-003 | Portability | TR-014 | models/scanner | POSIX/`\n` tests, 3.10–3.12; clean-venv wheel install + arbitrary-cwd run | To verify |
-| NFR-004 | Security | TR-015 | writer/scanner | no-upload, no-follow, read-only, filename-only reports | To verify |
+| NFR-001 | Performance | TR-013 | scanner/renderer | `tests/test_performance.py` (1,000 files < 2.0 s) | Verified (measured 1.01 s) |
+| NFR-002 | Memory | TR-013 | renderer/writer | `tests/test_performance.py` (tracemalloc peak < 100 MB) | Verified (measured 89.6 MB at 15 MB scale) |
+| NFR-003 | Portability | TR-014 | models/scanner | POSIX/`\n` tests, 3.10–3.12; clean-venv wheel install + arbitrary-cwd run | Verified (wheel install + unrelated-project scan) |
+| NFR-004 | Security | TR-015 | writer/scanner | no-upload, no-follow, read-only, filename-only reports | Verified (contract + engine suites) |
 | NFR-005 | Reliability | TR-015 | scanner/writer | checksums, atomic-write tests | Verified (v1 suite) |
-| NFR-006 | Determinism | TR-016 | scanner/renderer | SHA-256 equality (timing console-only) | To verify |
+| NFR-006 | Determinism | TR-016 | scanner/renderer | SHA-256 equality (timing console-only) | Verified (contract + perf suites) |
 | NFR-007 | Zero-deps | TR-017 | `pyproject.toml` | import surface check | Verified |
-| NFR-008 | Usability | TR-012 | cli/reporter | menu + `[INFO]`/`[OK]` format tests | To verify |
-| NFR-009 | Testability | TR-018 | `tests/` | pytest suite incl. contract tests | To verify |
+| NFR-008 | Usability | TR-012 | cli/reporter | menu + `[INFO]`/`[OK]` format tests | Verified (contract suite) |
+| NFR-009 | Testability | TR-018 | `tests/` | pytest suite incl. contract tests | Verified (103 tests) |
 | NFR-010 | Encoding | TR-014 | classifier | UTF-8/Latin-1/mixed tests | Verified (v1 suite) |
-| NFR-011 | License honesty | TR-019 | `LICENSE` + metadata | file-exists check | To verify (Phase 4) |
+| NFR-011 | License honesty | TR-019 | `LICENSE` + metadata | file-exists check | Verified (contract suite) |
 
 ---
 
