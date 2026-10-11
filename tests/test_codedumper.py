@@ -324,7 +324,7 @@ def test_cli_run_success(sample_project: Path, tmp_path: Path):
     exit_code = main([str(sample_project), "-o", str(out), "--force"])
     assert exit_code == 0
     assert out.exists()
-    assert "# Codebase Dump: my_project" in out.read_text(encoding="utf-8")
+    assert "CODEBASE DUMP: my_project" in out.read_text(encoding="utf-8")
 
 
 def test_cli_dry_run(sample_project: Path, tmp_path: Path):
@@ -346,7 +346,7 @@ def test_cli_overwrite_refusal(sample_project: Path, tmp_path: Path):
     # With force -> exit code 0
     exit_code_force = main([str(sample_project), "-o", str(out), "--force"])
     assert exit_code_force == 0
-    assert "# Codebase Dump: my_project" in out.read_text(encoding="utf-8")
+    assert "CODEBASE DUMP: my_project" in out.read_text(encoding="utf-8")
 
 
 def test_cli_invalid_target():
