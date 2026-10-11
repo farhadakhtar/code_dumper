@@ -31,9 +31,12 @@ from codedumper.writer import write_dump_stream
 
 FILE_COUNT = 1000
 TARGET_BYTES_PER_FILE = 15 * 1024  # ~15 KB -> ~15 MB total
+WIDE_FILE_COUNT = 100
+WIDE_BYTES_PER_FILE = 500 * 1024  # 500 KB x 100 -> ~50 MB total
 WARM_TIME_BUDGET_SECONDS = 2.0
 COLD_TIME_GUARDRAIL_SECONDS = 60.0
 MEMORY_BUDGET_BYTES = 100 * 1024 * 1024
+MEMORY_BOUND_TEXT_MB = 50
 
 EXTENSIONS = (".py", ".js", ".md", ".txt", ".toml")
 
@@ -64,6 +67,23 @@ def _make_big_project(root: Path, name: str = "bench_project") -> Path:
 @pytest.fixture(scope="module")
 def big_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return _make_big_project(tmp_path_factory.mktemp("bench"), "bench_project")
+
+
+@pytest.fixture(scope="module")
+def wide_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """~50 MB of text (100 x 500 KB) for the NFR-002 memory bound.
+
+    File count is intentionally low: peak memory scales with total bytes
+    held, and fewer files keep first-touch cost small. Each file is under
+    the default 1 MB per-file cap.
+    """
+    proj = tmp_path_factory.mktemp("bench_wide") / "wide_project"
+    proj.mkdir()
+    line = "wide_filler_value = {v}  # deterministic memory benchmark line {i}\n"
+    for i in range(WIDE_FILE_COUNT):
+        chunk = line.format(v=i % 997, i=i).encode("utf-8")
+        (proj / f"wide_{i:03d}.py").write_bytes(chunk * (WIDE_BYTES_PER_FILE // len(chunk) + 1))
+    return proj
 
 
 @pytest.fixture(scope="module")
@@ -118,16 +138,23 @@ def test_benchmark_warm_scan_stream_write_under_two_seconds(big_project: Path):
     assert elapsed < WARM_TIME_BUDGET_SECONDS
 
 
-def test_benchmark_peak_memory_under_100mb(big_project: Path):
-    config = _config_for(big_project, "bench_mem.md")
+def test_benchmark_peak_memory_under_100mb(wide_project: Path):
+    """NFR-002: ~50 MB of total text peaks under 100 MB on the streaming path.
+
+    Allocation volume is cache-independent, so no warm-up is needed; the
+    measured peak holds for cold and warm runs alike.
+    """
+    config = _config_for(wide_project, "bench_mem.md")
     tracemalloc.start()
     try:
         result = scan_repository(config)
+        content_mb = sum(f.size for f in result.included_files) / (1024 * 1024)
         write_dump_stream(config.output_path, iter_markdown_parts(config, result), force=True)
         _, peak = tracemalloc.get_traced_memory()
     finally:
         tracemalloc.stop()
-    print(f"\nbenchmark: tracemalloc peak {peak / (1024 * 1024):.1f} MB")
+    print(f"\nbenchmark: {content_mb:.1f} MB text, tracemalloc peak {peak / (1024 * 1024):.1f} MB")
+    assert content_mb >= MEMORY_BOUND_TEXT_MB - 5  # fixture really tests the bound
     assert peak < MEMORY_BUDGET_BYTES
 
 
