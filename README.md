@@ -89,13 +89,13 @@ codedumper
 
 ## The CLI experience
 
-Type `codedumper` in any project directory to open the interactive menu:
+Type `codedumper` in any project directory to open the interactive menu.
+On a true-color terminal (e.g. Windows Terminal) the launch shows the
+official CodeDumper logo rendered from the bundled `logo.png` artwork,
+followed by the installed version and the menu:
 
 ```text
-CODEDUMPER CLI
-
-         Turn your codebase into Markdown.
-
+v1.1.0
 
  1. Dump the current project
  2. Dump another project
@@ -105,6 +105,11 @@ CODEDUMPER CLI
  6. Help and documentation
  7. Exit
 ```
+
+Terminals without true-color support (classic conhost, pipes,
+`NO_COLOR`, `dumb` terminals, very narrow windows) skip the artwork and
+show the same version line and menu instead — never a fake replacement
+logo.
 
 - **1. Dump the current project:** scans the current directory and writes
   `<project-name>.txt` next to the project (outside it, so later scans
