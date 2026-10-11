@@ -130,7 +130,7 @@ without changes.
 ### Example: dump the current project
 
 ```text
- Select an option [1-7]: 1
+Select an option [1-7]: 1
 
 Project: my-application
 Default output: D:\Projects\my-application.txt
