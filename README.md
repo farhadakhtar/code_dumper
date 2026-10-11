@@ -92,26 +92,18 @@ codedumper
 Type `codedumper` in any project directory to open the interactive menu:
 
 ```text
-                 CODEDUMPER CLI
+CODEDUMPER CLI
 
          Turn your codebase into Markdown.
 
 
  1. Dump the current project
-
  2. Dump another project
-
  3. Preview project contents
  4. Update
-
  5. Configure exclusions
-
  6. Help and documentation
-
  7. Exit
-
-
- Select an option [1-7]:
 ```
 
 - **1. Dump the current project:** scans the current directory and writes
