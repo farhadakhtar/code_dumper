@@ -113,6 +113,7 @@ def _add_dump_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--format",
+        dest="dump_format",
         choices=FORMAT_CHOICES,
         default=FORMAT_TEXT,
         help="Output format: plain text '.txt' (default) or Markdown '.md'.",
@@ -158,12 +159,6 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         default=None,
         help="Path to the repository or directory to export. (Default: current working directory)",
-    )
-    parser.add_argument(
-        "--format",
-        choices=FORMAT_CHOICES,
-        default=FORMAT_TEXT,
-        help="Output format: plain text '.txt' (default) or Markdown '.md'.",
     )
     _add_dump_options(parser)
 
