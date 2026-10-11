@@ -196,6 +196,8 @@ preview mode, honest reporting, pytest suite, install docs, `LICENSE`.
 
 `.codedumperignore`, multiple export formats, token-count estimates,
 incremental export/diff, configuration profiles, standalone executables.
+Beyond-envelope scaling (two-pass render for >50 MB text workloads) is
+likewise deferred; see NFR-002 and DRD §6.
 
 ### 7.3 Explicitly Out of Scope
 
