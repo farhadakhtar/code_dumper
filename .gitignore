@@ -81,3 +81,4 @@ autocommit_state.json
 .cache/
 *.bak
 *.orig
+# autocommit liveness probe

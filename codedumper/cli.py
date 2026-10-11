@@ -2,8 +2,9 @@
 
 Implements the README contract:
 
-- Bare ``codedumper`` launches the interactive menu (dump, update dump,
-  GitHub, self-update check, exit).
+- Bare ``codedumper`` launches the interactive menu exactly as specified
+  (dump current / dump another / preview / update / configure-exclusions
+  display / help / exit); input ``4`` runs the update-dump flow.
 - ``codedumper dump [PATH] [OPTIONS]`` is the primary non-interactive form.
 - ``codedumper [PATH] [OPTIONS]`` (legacy direct form) keeps working.
 - Default output is plain text (``.txt``); ``--format markdown`` opts in
