@@ -565,6 +565,23 @@ def render_half_blocks(small: bytes, cols: int, rows: int) -> str:
     return "\n".join(lines)
 
 
+def _render_fitted(rgba: bytes, width: int, height: int,
+                   fitted: Tuple[int, int, int]) -> str:
+    """Downscale + render + center an already-fitted image.
+
+    Single shared path used by both :func:`render_logo_for_width` and the
+    production diagnose flow, so tested bytes and shipped bytes are
+    identical by construction.
+    """
+    cols, rows, pad = fitted
+    small = downscale_rgba(rgba, width, height, cols, rows)
+    art = render_half_blocks(small, cols, rows)
+    if pad:
+        prefix = " " * pad
+        art = "\n".join(prefix + line for line in art.split("\n"))
+    return art
+
+
 def render_logo_for_width(term_cols: int, max_rows: int = MAX_ART_ROWS,
                           asset: Optional[Path] = None) -> Optional[str]:
     """Render the bundled logo for ``term_cols`` columns, or ``None``.
@@ -583,16 +600,10 @@ def render_logo_for_width(term_cols: int, max_rows: int = MAX_ART_ROWS,
         fitted = fit_display(term_cols, width, height, max_rows)
         if fitted is None:
             return None
-        cols, rows, pad = fitted
-        small = downscale_rgba(rgba, width, height, cols, rows)
-        art = render_half_blocks(small, cols, rows)
+        return _render_fitted(rgba, width, height, fitted)
     except (OSError, LogoError, ValueError, struct.error, zlib.error,
             MemoryError, RecursionError):
         return None
-    if pad:
-        prefix = " " * pad
-        art = "\n".join(prefix + line for line in art.split("\n"))
-    return art
 
 
 @dataclass
@@ -703,10 +714,15 @@ def diagnose_launch_logo(stream=None, env=None,
     except OSError as exc:
         return LaunchDiagnosis(False, "asset-unreadable", f"{exc}")
 
+    fitted = fit_display(cols, width_px, height_px)
+    if fitted is None:
+        usable = cols - 2 * LOGO_H_MARGIN
+        return LaunchDiagnosis(False, "narrow-window",
+                               f"usable width {usable} < {MIN_ART_COLS} "
+                               f"(terminal {cols})")
     try:
-        cols, rows = fit_size(width_px, height_px, cols)
-        small = downscale_rgba(rgba, width_px, height_px, cols, rows)
-        art = render_half_blocks(small, cols, rows)
+        art = _render_fitted(rgba, width_px, height_px, fitted)
+        cols, rows, _pad = fitted
     except (ValueError, MemoryError, RecursionError) as exc:
         return LaunchDiagnosis(False, "render-failed", f"{exc}")
 
