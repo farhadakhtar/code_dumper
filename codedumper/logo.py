@@ -364,6 +364,68 @@ def terminal_supports_truecolor(stream=None, env=None) -> bool:
     return ok
 
 
+def _query_console_vt(get_mode, set_mode) -> Tuple[str, str]:
+    """Pure Windows-console VT decision over injected callables.
+
+    ``get_mode()`` returns ``(ok, mode_int_or_None)``;
+    ``set_mode(int)`` returns success bool (may raise). Returns
+    ``(status, detail)`` with status ``enabled`` | ``enabled-on-demand`` |
+    ``unavailable`` | ``unknown``. Fully unit-testable without a console.
+    """
+    ENABLE_VT = 0x0004
+    try:
+        ok, mode = get_mode()
+    except Exception as exc:
+        return "unknown", f"console-query-failed: {exc}"
+    if not ok or mode is None:
+        return "unknown", "not-a-windows-console"
+    if mode & ENABLE_VT:
+        return "enabled", "windows-vt-processing-already-enabled"
+    try:
+        enabled = bool(set_mode(mode | ENABLE_VT))
+    except Exception as exc:
+        return "unavailable", f"setconsolemode-failed: {exc}"
+    if enabled:
+        return "enabled-on-demand", "windows-vt-processing-enabled-on-demand"
+    return "unavailable", ("windows-vt-processing-unavailable "
+                           "(legacy console mode?)")
+
+
+def _windows_console_vt(stream, _platform=None) -> Tuple[str, str]:
+    """Probe Windows console virtual-terminal processing for ``stream``.
+
+    Returns ``(status, detail)`` like :func:`_query_console_vt`, or
+    ``("unknown", ...)`` on non-Windows platforms, missing filenos, or
+    unavailable console APIs. Never raises. VT processing is only ever
+    *enabled* (never disabled) and only when it is about to be used;
+    probing a non-console never mutates anything.
+    """
+    plat = _platform if _platform is not None else sys.platform
+    if plat != "win32":
+        return "unknown", "not-windows"
+    try:
+        fileno = stream.fileno()
+    except Exception as exc:
+        return "unknown", f"no-fileno: {exc}"
+    try:
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+        kernel32 = ctypes.windll.kernel32
+        handle = msvcrt.get_osfhandle(fileno)
+
+        def _get():
+            mode = wintypes.DWORD()
+            ok = kernel32.GetConsoleMode(handle, ctypes.byref(mode))
+            return (bool(ok), int(mode.value) if ok else None)
+
+        def _set(new_mode: int) -> bool:
+            return bool(kernel32.SetConsoleMode(handle, new_mode))
+    except Exception as exc:
+        return "unknown", f"no-console-api: {exc}"
+    return _query_console_vt(_get, _set)
+
+
 def terminal_width(default: int = 80, env=None) -> int:
     """Best-effort terminal column count (respects ``COLUMNS``)."""
     try:
