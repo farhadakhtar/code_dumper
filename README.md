@@ -114,9 +114,12 @@ logo.
 > Troubleshooting a missing logo: run with `CODEDUMPER_LOGO_DEBUG=1`
 > (e.g. `$env:CODEDUMPER_LOGO_DEBUG=1; codedumper`) to print the exact
 > fallback reason (`not-a-tty`, `no-color`, `dumb-terminal`,
-> `no-truecolor-indicators`, `narrow-window`, `asset-missing`,
-> `decode-failed`, `encoding`, `write-failed`) to stderr. A common cause
-> on Windows is a non-UTF-8 console code page: run `chcp 65001` and retry.
+> `no-truecolor-indicators`, `windows-vt-unavailable`, `narrow-window`,
+> `asset-missing`, `decode-failed`, `encoding`, `write-failed`) to stderr.
+> On Windows, an interactive console with virtual-terminal processing
+> renders the logo even when no environment indicator is set; a common
+> remaining cause is a non-UTF-8 console code page — run `chcp 65001`
+> and retry.
 
 - **1. Dump the current project:** scans the current directory and writes
   `<project-name>.txt` next to the project (outside it, so later scans
