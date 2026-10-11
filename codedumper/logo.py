@@ -638,23 +638,6 @@ def _ensure_block_encodable(stream, allow_reconfigure: bool = True) -> Tuple[boo
     if encoding is None:
         return True, "encoding-unknown-assumed-utf-8"
     return False, f"encoding-cannot-represent-block:{encoding}"
-    encoding = _stream_encoding(stream)
-    if encoding is not None:
-        try:
-            HALF_BLOCK.encode(encoding, errors="strict")
-            return True, ""
-        except (LookupError, UnicodeEncodeError, TypeError):
-            pass
-    reconfig = getattr(stream, "reconfigure", None)
-    if callable(reconfig):
-        try:
-            reconfig(encoding="utf-8")
-            return True, "reconfigured-output-to-utf-8"
-        except Exception as exc:
-            return False, f"reconfigure-failed: {exc}"
-    if encoding is None:
-        return True, "encoding-unknown-assumed-utf-8"
-    return False, f"encoding-cannot-represent-block:{encoding}"
 
 
 def diagnose_launch_logo(stream=None, env=None,
