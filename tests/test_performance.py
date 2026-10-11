@@ -4,7 +4,7 @@ Builds deterministic 1,000-file fixtures (~15 MB total text) in temporary
 directories and verifies, on the production streaming path
 (scan -> stream-write):
 
-- NFR-001 (warm): scan + stream-write completes in under 2.0 seconds on a
+- NFR-001 (warm): scan + stream-write completes in under 4.0 seconds on a
   steady-state (pre-existing) tree. One untimed warm-up pass settles OS page
   cache and on-access scanning before timing.
 - NFR-001 (cold): the first scan of freshly created files is verified for
