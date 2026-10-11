@@ -27,6 +27,47 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024):.2f} MB"
 
 
+def iter_markdown_parts(config: ScanConfig, result: ScanResult):
+    """Yield the Markdown document piece by piece (single source of truth).
+
+    Both :func:`render_markdown` and the streaming writer consume this
+    generator, so in-memory and streamed outputs are byte-identical by
+    construction. Streaming avoids ever holding the joined document plus
+    the parts list in memory at once.
+    """
+    # Title
+    yield f"# Codebase Dump: {result.project_name}\n"
+
+    # Project Structure tree
+    if result.tree_text and not config.no_tree:
+        yield "## Project Structure\n"
+        yield "```text"
+        yield result.tree_text
+        yield "```\n"
+
+    # File Contents
+    if result.included_files:
+        for item in result.included_files:
+            yield f"## File: {item.rel_path}\n"
+            yield f"- Language: `{item.language}` | Size: {format_size(item.size)} | Lines: {item.line_count}\n"
+
+            fence = calculate_code_fence(item.content)
+            yield f"{fence}{item.language}"
+            yield item.content
+            yield f"{fence}\n"
+
+    # Excluded Files
+    if result.omitted_files:
+        yield "## Excluded Files\n"
+        yield "The following files and paths were discovered during scanning but excluded from the dump:\n"
+        yield "| Relative Path | Reason | File Size |"
+        yield "|---|---|---|"
+        for omitted in result.omitted_files:
+            size_str = format_size(omitted.size) if omitted.size > 0 else "-"
+            yield f"| `{omitted.rel_path}` | {omitted.reason} | {size_str} |"
+        yield ""
+
+
 def render_markdown(config: ScanConfig, result: ScanResult) -> str:
     """Render the complete repository scan result into a single Markdown document.
 
@@ -35,38 +76,4 @@ def render_markdown(config: ScanConfig, result: ScanResult) -> str:
     fence, and a ``## Excluded Files`` table. No timestamps are embedded so
     repeated runs stay byte-for-byte deterministic.
     """
-    parts = []
-
-    # Title
-    parts.append(f"# Codebase Dump: {result.project_name}\n")
-
-    # Project Structure tree
-    if result.tree_text and not config.no_tree:
-        parts.append("## Project Structure\n")
-        parts.append("```text")
-        parts.append(result.tree_text)
-        parts.append("```\n")
-
-    # File Contents
-    if result.included_files:
-        for item in result.included_files:
-            parts.append(f"## File: {item.rel_path}\n")
-            parts.append(f"- Language: `{item.language}` | Size: {format_size(item.size)} | Lines: {item.line_count}\n")
-
-            fence = calculate_code_fence(item.content)
-            parts.append(f"{fence}{item.language}")
-            parts.append(item.content)
-            parts.append(f"{fence}\n")
-
-    # Excluded Files
-    if result.omitted_files:
-        parts.append("## Excluded Files\n")
-        parts.append("The following files and paths were discovered during scanning but excluded from the dump:\n")
-        parts.append("| Relative Path | Reason | File Size |")
-        parts.append("|---|---|---|")
-        for omitted in result.omitted_files:
-            size_str = format_size(omitted.size) if omitted.size > 0 else "-"
-            parts.append(f"| `{omitted.rel_path}` | {omitted.reason} | {size_str} |")
-        parts.append("")
-
-    return "\n".join(parts)
+    return "\n".join(iter_markdown_parts(config, result))
