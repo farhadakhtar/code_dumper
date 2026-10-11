@@ -92,43 +92,44 @@ codedumper
 Type `codedumper` in any project directory to open the interactive menu:
 
 ```text
-    ####  ###  ####  ##### ####  #   # #   # ####  ##### ####
-  #     #   # #   # #     #   # #   # ## ## #   # #     #   #
-   #     #   # #   # ####  #   # #   # # # # ####  ####  ####
-   #     #   # #   # #     #   # #   # #   # #     #     # #
-    ####  ###  ####  ##### ####   ###  #   # #     ##### #  #
+                 CODEDUMPER CLI
 
-                           CodeDumper
-              Turn your codebase into plain text.
-================================================================
+         Turn your codebase into Markdown.
 
-What would you like to do?
 
-  1. Get a code dump
-  2. Update the code dump
-  3. See GitHub
-  4. Check for updates and install
-  5. Exit
+ 1. Dump the current project
 
-Select an option [1-5]:
+ 2. Dump another project
+
+ 3. Preview project contents
+
+4. Update
+
+ 4. Configure exclusions
+
+ 5. Help and documentation
+
+ 6. Exit
+
+
+ Select an option [1-6]:
 ```
 
-- **1. Get a code dump:** scans the current directory and writes
+- **1. Dump the current project:** scans the current directory and writes
   `<project-name>.txt` next to the project (outside it, so later scans
   never re-ingest the dump). You may accept the default path or type
   another one. A concise summary (discovered / included / excluded /
   sensitive-skipped counts, duration, output path) is always shown.
-- **2. Update the code dump:** finds the project's existing `.txt` dump,
-  asks for confirmation, then regenerates it atomically. If no dump
-  exists, it offers to create one. Legacy `.md` dumps are left untouched.
-- **3. See GitHub:** opens `https://github.com/farhadakhtar/code_dumper`
-  in your default browser.
-- **4. Check for updates and install:** compares your installed version
-  against official GitHub releases (stable only, never prereleases),
-  asks before installing anything, and verifies the result. If no
-  release is published yet, it says so and shows a safe manual-update
-  route instead.
-- **5. Exit.**
+- **2. Dump another project:** prompts for a project path, then dumps it
+  the same way.
+- **3. Preview project contents:** dry-run scan of the current directory
+  with real counts; nothing is written.
+- **4. Update:** regenerates the current project's existing `.txt` dump
+  after explicit confirmation (offers to create one when missing; legacy
+  `.md` dumps are left untouched). Custom `--exclude` patterns remain
+  available on direct commands.
+- **5. Help and documentation:** prints the full command help.
+- **6. Exit.**
 
 Invalid choices re-prompt; `Ctrl+C` exits cleanly; closed input exits
 without changes.
@@ -136,7 +137,7 @@ without changes.
 ### Example: dump the current project
 
 ```text
-Select an option [1-5]: 1
+ Select an option [1-6]: 1
 
 Project: my-application
 Default output: D:\Projects\my-application.txt
