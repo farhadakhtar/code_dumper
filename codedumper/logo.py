@@ -119,26 +119,26 @@ def _unfilter(raw: bytes, width: int, height: int, bytes_per_pixel: int) -> byte
 
 
 def _apply_trns(pixel: bytearray, color_type: int, trns: Optional[bytes]) -> bytearray:
-    """Apply tRNS transparency (color types 0 and 2 only)."""
-    if trns is None:
-        return pixel
-    if color_type == 0 and len(trns) >= 2:
-        gray = struct.unpack(">H", trns[:2])[0] >> 8
-        out = bytearray(len(pixel) + len(pixel) // 1)
-        # gray + alpha interleave
+    """Apply tRNS transparency, always returning RGBA (types 0 and 2)."""
+    if color_type == 0:
+        key = None
+        if trns is not None and len(trns) >= 2:
+            key = struct.unpack(">H", trns[:2])[0] >> 8
         res = bytearray()
-        for i in range(0, len(pixel)):
-            res.append(pixel[i])
-            res.append(0 if pixel[i] == gray else 255)
+        for gray in pixel:
+            res += bytes((gray, gray, gray,
+                          0 if (key is not None and gray == key) else 255))
         return res
-    if color_type == 2 and len(trns) >= 6:
-        key = struct.unpack(">HHH", trns[:6])
-        key = (key[0] >> 8, key[1] >> 8, key[2] >> 8)
+    if color_type == 2:
+        key = None
+        if trns is not None and len(trns) >= 6:
+            raw_key = struct.unpack(">HHH", trns[:6])
+            key = (raw_key[0] >> 8, raw_key[1] >> 8, raw_key[2] >> 8)
         res = bytearray()
         for i in range(0, len(pixel), 3):
             triple = (pixel[i], pixel[i + 1], pixel[i + 2])
             res += bytes(triple)
-            res.append(0 if triple == key else 255)
+            res.append(0 if (key is not None and triple == key) else 255)
         return res
     return pixel
 
@@ -190,8 +190,6 @@ def decode_png_rgba(data: bytes) -> Tuple[int, int, bytes]:
         pos += 12 + length
     if not seen_ihdr or width <= 0 or height <= 0:
         raise LogoError("missing or invalid IHDR")
-    if color_type == 3 or (color_type == 3 and plte is None):
-        raise LogoError("palette PNG without PLTE")
     try:
         raw = zlib.decompress(b"".join(idat_parts))
     except zlib.error as exc:
@@ -215,29 +213,16 @@ def decode_png_rgba(data: bytes) -> Tuple[int, int, bytes]:
             expanded += plte[index * 3:index * 3 + 3]
             expanded.append(alpha_table[index] if alpha_table else 255)
         pixels = expanded
-        color_type = 6
     elif color_type in (0, 2):
         pixels = _apply_trns(pixels, color_type, trns)
-        color_type = 6 if color_type == 2 else 4
-
-    if color_type == 0:
-        # gray -> RGBA opaque
-        expanded = bytearray()
-        for g in pixels:
-            expanded += bytes((g, g, g, 255))
-        pixels = expanded
     elif color_type == 4:
         # gray+alpha -> RGBA
         expanded = bytearray()
         for i in range(0, len(pixels), 2):
-            g, a = pixels[i], pixels[i + 1]
-            expanded += bytes((g, g, g, a))
+            gray, alpha = pixels[i], pixels[i + 1]
+            expanded += bytes((gray, gray, gray, alpha))
         pixels = expanded
-    elif color_type == 2:  # pragma: no cover - handled above via tRNS path
-        expanded = bytearray()
-        for i in range(0, len(pixels), 3):
-            expanded += pixels[i:i + 3] + b"\xff"
-        pixels = expanded
+    # color_type 6 (and everything converted above) is RGBA here.
 
     expected = width * height * 4
     if len(pixels) != expected:
