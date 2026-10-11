@@ -454,11 +454,10 @@ def render_logo_for_width(term_cols: int, max_rows: int = MAX_ART_ROWS,
     """
     if term_cols < MIN_TERM_COLS:
         return None
-    path = asset if asset is not None else logo_asset_path()
-    if path is None:
-        return None
     try:
-        data = path.read_bytes()
+        data = logo_asset_bytes(asset)
+        if not data:
+            return None
         width, height, rgba = decode_png_rgba(data)
         cols, rows = fit_size(width, height, term_cols, max_rows)
         small = downscale_rgba(rgba, width, height, cols, rows)
@@ -468,23 +467,130 @@ def render_logo_for_width(term_cols: int, max_rows: int = MAX_ART_ROWS,
         return None
 
 
+@dataclass
+class LaunchDiagnosis:
+    """Machine-readable outcome of a launch-logo attempt (for tests)."""
+
+    shown: bool
+    reason: str = "shown"
+    detail: str = ""
+
+
+def _stream_encoding(stream) -> Optional[str]:
+    try:
+        return stream.encoding or None
+    except Exception:
+        return None
+
+
+def _ensure_block_encodable(stream) -> Tuple[bool, str]:
+    """Make sure ``▄`` can be written to ``stream``.
+
+    Tries (in order): the stream's own encoding, reconfiguring it to
+    UTF-8, and — when the encoding is unknown — an optimistic proceed
+    (the guarded write below still converts failures into a fallback).
+    Returns ``(ok, detail)``.
+    """
+    encoding = _stream_encoding(stream)
+    if encoding is not None:
+        try:
+            HALF_BLOCK.encode(encoding, errors="strict")
+            return True, ""
+        except (LookupError, UnicodeEncodeError, TypeError):
+            pass
+    reconfig = getattr(stream, "reconfigure", None)
+    if callable(reconfig):
+        try:
+            reconfig(encoding="utf-8")
+            return True, "reconfigured-output-to-utf-8"
+        except Exception as exc:
+            return False, f"reconfigure-failed: {exc}"
+    if encoding is None:
+        return True, "encoding-unknown-assumed-utf-8"
+    return False, f"encoding-cannot-represent-block:{encoding}"
+
+
+def diagnose_launch_logo(stream=None, env=None,
+                         width: Optional[int] = None) -> LaunchDiagnosis:
+    """Attempt the launch logo and report exactly what happened.
+
+    Never raises and never prints: returns :class:`LaunchDiagnosis` with
+    ``shown`` plus a stable ``reason`` (``shown`` / ``not-a-tty`` /
+    ``no-color`` / ``dumb-terminal`` / ``no-truecolor-indicators`` /
+    ``narrow-window`` / ``asset-missing`` / ``decode-failed`` /
+    ``render-failed`` / ``encoding`` / ``write-failed``) and a human
+    ``detail`` string. Powers both the silent normal path and the
+    opt-in ``CODEDUMPER_LOGO_DEBUG`` diagnostic.
+    """
+    import sys as _sys
+    out = stream if stream is not None else _sys.stdout
+    environment = os.environ if env is None else env
+
+    if not _stream_is_tty(out):
+        return LaunchDiagnosis(False, "not-a-tty",
+                               "stdout is piped, redirected, or closed")
+    ok, reason, detail = _check_indicators(environment)
+    if not ok:
+        return LaunchDiagnosis(False, reason, detail)
+
+    cols = width if width is not None else terminal_width()
+    if cols < MIN_TERM_COLS:
+        return LaunchDiagnosis(False, "narrow-window",
+                               f"terminal width {cols} < {MIN_TERM_COLS}")
+
+    data = logo_asset_bytes()
+    if not data:
+        return LaunchDiagnosis(False, "asset-missing",
+                               "bundled logo.png not found via "
+                               "importlib.resources nor source tree")
+    try:
+        width_px, height_px, rgba = decode_png_rgba(data)
+    except (LogoError, ValueError, struct.error, zlib.error,
+            MemoryError, RecursionError) as exc:
+        return LaunchDiagnosis(False, "decode-failed", f"{exc}")
+    except OSError as exc:
+        return LaunchDiagnosis(False, "asset-unreadable", f"{exc}")
+
+    try:
+        cols, rows = fit_size(width_px, height_px, cols)
+        small = downscale_rgba(rgba, width_px, height_px, cols, rows)
+        art = render_half_blocks(small, cols, rows)
+    except (ValueError, MemoryError, RecursionError) as exc:
+        return LaunchDiagnosis(False, "render-failed", f"{exc}")
+
+    enc_ok, enc_detail = _ensure_block_encodable(out)
+    if not enc_ok:
+        hint = ("set the console code page to UTF-8 "
+                "(e.g. `chcp 65001`) and retry" if "encoding-cannot" in enc_detail
+                else enc_detail)
+        return LaunchDiagnosis(False, "encoding", hint)
+
+    try:
+        out.write(art + "\n")
+        out.flush()
+    except (OSError, UnicodeEncodeError, ValueError) as exc:
+        return LaunchDiagnosis(False, "write-failed", f"{exc}")
+
+    if enc_detail:
+        return LaunchDiagnosis(True, "shown", enc_detail)
+    return LaunchDiagnosis(True, "shown", f"{cols}x{rows // 2 + rows % 2} cells")
+
+
 def print_launch_logo(stream=None, width: Optional[int] = None) -> bool:
     """Print the logo art when the terminal supports it.
 
     Returns ``True`` when art was written, ``False`` for the plain
-    fallback. Never raises for I/O or encoding problems.
+    fallback. Never raises for I/O or encoding problems. Set
+    ``CODEDUMPER_LOGO_DEBUG=1`` to also print the fallback reason to
+    stderr (normal launches stay silent).
     """
     import sys as _sys
-    out = stream if stream is not None else _sys.stdout
-    if not terminal_supports_truecolor(out):
-        return False
-    cols = width if width is not None else terminal_width()
-    art = render_logo_for_width(cols)
-    if art is None:
-        return False
-    try:
-        out.write(art + "\n")
-        out.flush()
-    except (OSError, UnicodeEncodeError, ValueError):
-        return False
-    return True
+    diagnosis = diagnose_launch_logo(stream=stream, width=width)
+    if os.environ.get(LOGO_DEBUG_ENV_VAR):
+        try:
+            print(f"[codedumper-logo] shown={diagnosis.shown} "
+                  f"reason={diagnosis.reason} {diagnosis.detail}".rstrip(),
+                  file=_sys.stderr)
+        except OSError:
+            pass
+    return diagnosis.shown
