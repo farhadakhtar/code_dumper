@@ -212,12 +212,15 @@ def run_update_interactive() -> int: ...               # full menu flow, always 
 
 ```python
 LOGO_FILENAME: str = "logo.png"      # bundled asset, byte-identical to root logo.png
+LOGO_MAX_COLS/H_MARGIN/MIN_ART_COLS  # 96 cols cap, 4-col margins, 32-col minimum
 def logo_asset_path() -> Path | None: ...        # importlib.resources + source fallback
 def logo_asset_bytes(asset=None) -> bytes | None: ...  # resources byte access (zip-safe)
 def decode_png_rgba(data: bytes) -> tuple: ...   # stdlib 8-bit decoder (types 0/2/4/6)
 def terminal_supports_truecolor(stream, env) -> bool: ...  # conservative gate
 def _query_console_vt(get_mode, set_mode) -> tuple: ...  # pure VT decision logic
 def _windows_console_vt(stream) -> tuple: ...  # Win32 VT probe (unknown off-Windows)
+def fit_display(term_cols, w, h) -> tuple: ...  # capped, centered (cols, rows, pad)
+def render_half_blocks(...) -> str: ...          # fg=bottom, bg=top; per-row resets
 def diagnose_launch_logo(stream, env, width) -> LaunchDiagnosis: ...  # reason-coded outcome
 def print_launch_logo(stream, width, env) -> bool: ...     # never raises; debug env gated
 ```
