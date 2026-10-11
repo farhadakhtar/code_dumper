@@ -264,3 +264,136 @@ def test_packaging_declares_logo_asset():
     assert 'codedumper = ["logo.png"]' in pyproject
     manifest = (repo_root / "MANIFEST.in").read_text(encoding="utf-8")
     assert "codedumper/logo.png" in manifest
+
+
+# ---------------------------------------------------------------------------
+# Fallback reasons are identifiable (diagnose_launch_logo)
+# ---------------------------------------------------------------------------
+
+def test_diagnose_reasons_cover_every_fallback():
+    from codedumper.logo import diagnose_launch_logo
+    wt = {"WT_SESSION": "session-guid"}
+
+    d = diagnose_launch_logo(stream=_Pipe(), env={})
+    assert (d.shown, d.reason) == (False, "not-a-tty")
+
+    d = diagnose_launch_logo(stream=_Tty(), env={"NO_COLOR": "1"})
+    assert (d.shown, d.reason) == (False, "no-color")
+
+    d = diagnose_launch_logo(stream=_Tty(), env={"TERM": "dumb"})
+    assert (d.shown, d.reason) == (False, "dumb-terminal")
+
+    d = diagnose_launch_logo(stream=_Tty(), env={"TERM": "xterm"})
+    assert (d.shown, d.reason) == (False, "no-truecolor-indicators")
+    assert "TERM" in d.detail  # tells the user what was inspected
+
+    d = diagnose_launch_logo(stream=_Tty(), env=wt, width=10)
+    assert (d.shown, d.reason) == (False, "narrow-window")
+
+    d = diagnose_launch_logo(stream=_Tty(), env=wt, width=100)
+    assert (d.shown, d.reason) == (True, "shown")
+
+
+def test_diagnose_asset_and_decode_failures(monkeypatch, tmp_path: Path):
+    from codedumper.logo import diagnose_launch_logo
+    wt = {"WT_SESSION": "session-guid"}
+
+    monkeypatch.setattr(logo, "logo_asset_bytes", lambda *a, **k: None)
+    d = diagnose_launch_logo(stream=_Tty(), env=wt, width=100)
+    assert (d.shown, d.reason) == (False, "asset-missing")
+
+    bad = tmp_path / "logo.png"
+    bad.write_bytes(b"not a png")
+    monkeypatch.setattr(logo, "logo_asset_bytes",
+                        lambda *a, **k: bad.read_bytes())
+    d = diagnose_launch_logo(stream=_Tty(), env=wt, width=100)
+    assert (d.shown, d.reason) == (False, "decode-failed")
+
+
+def test_new_capability_indicators():
+    assert terminal_supports_truecolor(_Tty(), {"WT_PROFILE": "{guid}"}) is True
+    assert terminal_supports_truecolor(_Tty(), {"ConEmuANSI": "ON"}) is True
+    assert terminal_supports_truecolor(_Tty(), {"TERM": "xterm-direct"}) is True
+    assert terminal_supports_truecolor(_Tty(), {"TERM": "mintty"}) is True
+    assert terminal_supports_truecolor(
+        _Tty(), {"TERM_PROGRAM": "WindowsTerminal"}) is True
+    assert terminal_supports_truecolor(
+        _Tty(), {"TERM_PROGRAM": "Tabby"}) is True
+    # Still conservative everywhere else.
+    assert terminal_supports_truecolor(_Tty(), {"TERM": "xterm"}) is False
+    assert terminal_supports_truecolor(_Tty(), {"TERM": "vt100"}) is False
+    assert terminal_supports_truecolor(_Tty(), {}) is False
+
+
+def test_encoding_fallback_and_reconfigure():
+    from codedumper.logo import _ensure_block_encodable, diagnose_launch_logo
+    wt = {"WT_SESSION": "session-guid"}
+
+    class _Latin1Tty(_Tty):
+        encoding = "cp1252"
+
+        def write(self, _):
+            raise UnicodeEncodeError("cp1252", "", 0, 1, "nope")
+
+    # cp1252 cannot encode ▄ and this stream cannot reconfigure: honest refusal.
+    ok, detail = _ensure_block_encodable(_Latin1Tty())
+    assert ok is False and "cp1252" in detail
+    d = diagnose_launch_logo(stream=_Latin1Tty(), env=wt, width=100)
+    assert (d.shown, d.reason) == (False, "encoding")
+    assert "chcp" in d.detail
+
+    # Same codepage, but reconfigurable (e.g. a real console): art proceeds.
+    written = []
+
+    class _ReconfigurableTty(_Tty):
+        encoding = "cp1252"
+
+        def reconfigure(self, encoding=None, **kwargs):
+            self.encoding = encoding or "utf-8"
+
+        def write(self, text):
+            text.encode(self.encoding, errors="strict")
+            written.append(text)
+            return len(text)
+
+    ok, detail = _ensure_block_encodable(_ReconfigurableTty())
+    assert ok is True and "reconfigured" in detail
+    assert print_launch_logo(stream=_ReconfigurableTty(), width=100) is True
+    assert any("\u2584" in chunk for chunk in written)
+
+
+def test_asset_bytes_survives_non_file_installs(monkeypatch):
+    """Zip-style installs expose no plain file; byte access still works."""
+    from codedumper import logo as logo_module
+
+    class _FakeTrav:
+        def is_file(self):
+            return False
+
+        def read_bytes(self):
+            return logo_asset_path().read_bytes()  # type: ignore[union-attr]
+
+    class _FakeFiles:
+        def joinpath(self, _):
+            return _FakeTrav()
+
+    monkeypatch.setattr(
+        logo_module.importlib_resources if hasattr(logo_module, "importlib_resources") else "os",
+        "files" if hasattr(getattr(logo_module, "importlib_resources", object()), "files") else "environ",
+        lambda *a, **k: _FakeFiles(),
+        raising=False)
+    # Simpler, robust route: patch the module-level import instead.
+    import importlib.resources as real_resources
+    monkeypatch.setattr(real_resources, "files", lambda *a, **k: _FakeFiles())
+    data = logo.logo_asset_bytes()
+    assert data is not None and data[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_debug_env_prints_reason_without_spam(monkeypatch, capsys):
+    monkeypatch.setenv(logo.LOGO_DEBUG_ENV_VAR, "1")
+    assert print_launch_logo(stream=_Pipe()) is False
+    assert "reason=not-a-tty" in capsys.readouterr().err
+
+    monkeypatch.delenv(logo.LOGO_DEBUG_ENV_VAR)
+    assert print_launch_logo(stream=_Pipe()) is False
+    assert capsys.readouterr().err == ""
