@@ -526,10 +526,12 @@ def diagnose_launch_logo(stream=None, env=None,
     out = stream if stream is not None else _sys.stdout
     environment = os.environ if env is None else env
 
-    if not _stream_is_tty(out):
-        return LaunchDiagnosis(False, "not-a-tty",
-                               "stdout is piped, redirected, or closed")
+    # Single capability gate (mockable in tests); on failure, probe the
+    # concrete reason so fallbacks stay identifiable.
     if not terminal_supports_truecolor(out, environment):
+        if not _stream_is_tty(out):
+            return LaunchDiagnosis(False, "not-a-tty",
+                                   "stdout is piped, redirected, or closed")
         _, reason, detail = _check_indicators(environment)
         if not reason:  # defensive: gate failed for an unclear cause
             reason, detail = "no-truecolor-indicators", "indicators unclear"

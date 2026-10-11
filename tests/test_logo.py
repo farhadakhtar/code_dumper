@@ -64,7 +64,7 @@ def test_logo_asset_resolves_outside_repository(tmp_path: Path, monkeypatch):
 
 
 def test_logo_missing_asset_returns_none(monkeypatch, tmp_path: Path):
-    monkeypatch.setattr(logo, "logo_asset_path", lambda: None)
+    monkeypatch.setattr(logo, "logo_asset_bytes", lambda *a, **k: None)
     assert render_logo_for_width(80) is None
     assert print_launch_logo(stream=io.StringIO()) is False
 
@@ -341,7 +341,6 @@ def test_encoding_fallback_and_reconfigure():
     d = diagnose_launch_logo(stream=_Latin1Tty(), env=wt, width=100)
     assert (d.shown, d.reason) == (False, "encoding")
     assert "chcp" in d.detail
-
     # Same codepage, but reconfigurable (e.g. a real console): art proceeds.
     written = []
 
