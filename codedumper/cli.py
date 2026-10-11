@@ -48,6 +48,164 @@ FORMAT_MARKDOWN = "markdown"
 FORMAT_CHOICES = (FORMAT_TEXT, FORMAT_MARKDOWN)
 FORMAT_EXTENSIONS = {FORMAT_TEXT: "txt", FORMAT_MARKDOWN: "md"}
 
+# Fixed terminal wordmark: "CODE DUMPER" in an outlined, segmented
+# block-letter style (green + reset). Each glyph is stored as 6 rows
+# (right-stripped, so no trailing whitespace lives in source); the builder
+# pads cells to their declared widths and joins them with single-column
+# gaps, so letter columns align on every output row by construction.
+WORDMARK_GREEN = "\x1b[1;32m"
+WORDMARK_RESET = "\x1b[0m"
+
+_GLYPHS = {
+    "C": (8, (" ██████╗",
+              "██╔════╝",
+              "██║",
+              "██║",
+              "╚██████╗",
+              " ╚═════╝")),
+    "O": (9, (" ███████╗",
+              "██╔═══██╗",
+              "██║   ██║",
+              "██║   ██║",
+              "╚██████╔╝",
+              " ╚═════╝")),
+    "D": (8, ("██████╗",
+              "██╔══██╗",
+              "██║  ██║",
+              "██║  ██║",
+              "██████╔╝",
+              "╚═════╝")),
+    "E": (8, ("███████╗",
+              "██╔════╝",
+              "█████╗",
+              "██╔══╝",
+              "███████╗",
+              "╚══════╝")),
+    " ": (4, ("", "", "", "", "", "")),
+    "U": (9, ("██╗   ██╗",
+              "██║   ██║",
+              "██║   ██║",
+              "██║   ██║",
+              "╚██████╔╝",
+              " ╚═════╝")),
+    "M": (11, ("███╗   ███╗",
+               "████╗ ████║",
+               "██╔████╔██║",
+               "██║╚██╔╝██║",
+               "██║ ╚═╝ ██║",
+               "╚═╝     ╚═╝")),
+    "P": (8, ("██████╗",
+              "██╔══██╗",
+              "██████╔╝",
+              "██╔═══╝",
+              "██║",
+              "██║")),
+    "R": (8, ("██████╗",
+              "██╔══██╗",
+              "██████╔╝",
+              "██╔══██╗",
+              "██║  ██║",
+              "╚═╝  ╚═╝")),
+}
+
+_WORDMARK_SOURCE = "CODE DUMPER"
+
+
+def _build_wordmark(text: str = _WORDMARK_SOURCE) -> str:
+    """Assemble the fixed wordmark block with aligned letter columns."""
+    rows = []
+    for row in range(6):
+        parts = []
+        for ch in text:
+            width, glyph_rows = _GLYPHS[ch]
+            parts.append(glyph_rows[row].ljust(width))
+        rows.append(" ".join(parts).rstrip())
+    return "\n".join(rows)
+
+
+WORDMARK_TEXT = _build_wordmark()
+_WORDMARK_WIDTH = max(len(line) for line in WORDMARK_TEXT.splitlines())
+
+TAGLINE = "Turn your codebase into a clean, AI-ready dump."
+
+
+def terminal_width(default: int = 80) -> int:
+    """Best-effort terminal column count (respects ``COLUMNS``)."""
+    try:
+        import shutil
+        return shutil.get_terminal_size((default, 24)).columns or default
+    except (AttributeError, ValueError, OSError):
+        return default
+
+
+def format_brand_lines(term_cols: int, version: str) -> List[str]:
+    """Centered ``v<version>`` + tagline lines for the launch screen."""
+    width = max(term_cols, 1)
+    version_line = f"v{version}"
+    lines = [" " * max(0, (width - len(version_line)) // 2) + version_line]
+    if len(TAGLINE) <= term_cols:
+        lines.append(" " * max(0, (width - len(TAGLINE)) // 2) + TAGLINE)
+    return lines
+
+
+def _color_enabled(stream=None, env=None) -> bool:
+    """Decide whether ANSI color may be emitted (NO_COLOR/dumb off)."""
+    environment = os.environ if env is None else env
+    if environment.get("NO_COLOR"):
+        return False
+    if (environment.get("TERM") or "").lower() in ("dumb", "unknown"):
+        return False
+    force = environment.get("CLICOLOR_FORCE")
+    if force not in (None, "", "0"):
+        return True
+    try:
+        return bool(stream.isatty())
+    except (AttributeError, ValueError, OSError):
+        return False
+
+
+def _ensure_utf8_output(stream) -> None:
+    """Best-effort switch of ``stream`` to UTF-8 (box-drawing glyphs)."""
+    reconfig = getattr(stream, "reconfigure", None)
+    if callable(reconfig):
+        try:
+            reconfig(encoding="utf-8")
+        except Exception:
+            pass
+
+
+def print_wordmark(stream=None, env=None, color: Optional[bool] = None,
+                   width: Optional[int] = None) -> str:
+    """Print the fixed green wordmark (or the plain fallback).
+
+    Returns ``"color"``, ``"plain"``, or ``"skipped"`` (terminal too narrow
+    for the block, or output failed; the menu that follows is unaffected).
+    ANSI styles are reset even if writing fails.
+    """
+    import sys as _sys
+    out = stream if stream is not None else _sys.stdout
+    use_color = _color_enabled(out, env) if color is None else bool(color)
+    try:
+        cols = width if width is not None else terminal_width()
+    except Exception:
+        cols = 80
+    if cols < _WORDMARK_WIDTH:
+        return "skipped"
+    _ensure_utf8_output(out)
+    text = WORDMARK_TEXT
+    if use_color:
+        text = f"{WORDMARK_GREEN}{text}{WORDMARK_RESET}"
+    try:
+        out.write(text + "\n")
+        out.flush()
+        return "color" if use_color else "plain"
+    except (OSError, UnicodeEncodeError, ValueError):
+        try:
+            out.write(WORDMARK_RESET)
+        except Exception:
+            pass
+        return "skipped"
+
 
 def parse_size_str(val: str) -> int:
     """Parse human size strings like '500KB', '2MB', or raw integers into bytes."""
