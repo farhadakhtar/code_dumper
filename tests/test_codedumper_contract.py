@@ -331,6 +331,9 @@ def test_menu_shows_image_logo_when_capable(monkeypatch, capsys):
     assert "CODEDUMPER CLI" not in out
     assert "AI-ready" not in out
     assert "Turn your codebase" not in out
+    # Final art row is reset-terminated before the version line: nothing
+    # overwrites the image, and no debug output leaks without opt-in.
+    assert "\x1b[0m\nv" in out
 
 
 def test_menu_invalid_choice_reprompts(capsys):
