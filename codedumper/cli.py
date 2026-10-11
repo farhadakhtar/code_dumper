@@ -305,88 +305,149 @@ def execute_dump(
     return 0
 
 
-def run_interactive_menu() -> int:
-    """Launch the interactive CODEDUMPER CLI menu. Returns the exit code."""
-    print(BANNER)
-    session_excludes: List[str] = []
+class _MenuExit(Exception):
+    """Internal control flow: leave the menu with the given exit code."""
 
-    while True:
-        try:
-            choice = input(MENU_PROMPT).strip()
-        except EOFError:
-            print()
-            return 0
-        except KeyboardInterrupt:
-            print("\nOperation canceled by user.", file=sys.stderr)
-            return 130
-
-        if choice == "1":
-            rc = _menu_dump(".", session_excludes)
-            if rc != 0:
-                print(f"[INFO] Dump finished with exit code {rc}.")
-        elif choice == "2":
-            try:
-                path = input("Enter the project path: ").strip()
-            except EOFError:
-                print()
-                return 0
-            except KeyboardInterrupt:
-                print("\nOperation canceled by user.", file=sys.stderr)
-                return 130
-            if not path:
-                print("No path entered. Returning to the menu.")
-                continue
-            rc = _menu_dump(path, session_excludes)
-            if rc != 0:
-                print(f"[INFO] Dump finished with exit code {rc}.")
-        elif choice == "3":
-            execute_dump(".", dry_run=True, exclude_patterns=list(session_excludes))
-        elif choice == "4":
-            try:
-                raw = input("Enter extra glob patterns, comma-separated (e.g. *.log, docs/*): ").strip()
-            except EOFError:
-                print()
-                return 0
-            except KeyboardInterrupt:
-                print("\nOperation canceled by user.", file=sys.stderr)
-                return 130
-            new_patterns = [p.strip() for p in raw.split(",") if p.strip()]
-            if new_patterns:
-                session_excludes.extend(new_patterns)
-                print(f"[INFO] Added {len(new_patterns)} exclusion pattern(s) for this session.")
-            else:
-                print("[INFO] No patterns entered; session exclusions unchanged.")
-        elif choice == "5":
-            print(build_parser().format_help())
-        elif choice == "6":
-            print("Goodbye!")
-            return 0
-        else:
-            print(f"Invalid choice: '{choice}'. Please select an option [1-6].")
+    def __init__(self, code: int):
+        super().__init__(f"menu exit {code}")
+        self.code = code
 
 
-def _menu_dump(path: str, session_excludes: List[str]) -> int:
-    """Dump helper for menu options 1/2 with overwrite confirmation."""
-    target_path = Path(path).resolve()
-    if not target_path.exists() or not target_path.is_dir():
-        print(f"Error: Target directory is not valid: '{target_path}'", file=sys.stderr)
-        return 1
-    dir_name = target_path.name or "repository"
-    default_output = Path(f"{dir_name}.md").resolve()
-    if default_output.exists():
-        try:
-            answer = input(f"Output file '{default_output}' already exists. Overwrite? [y/N]: ").strip().lower()
-        except EOFError:
-            print()
-            return 1
-        except KeyboardInterrupt:
-            print("\nOperation canceled by user.", file=sys.stderr)
-            return 130
-        if answer not in ("y", "yes"):
+def _ask(prompt: str) -> str:
+    """Prompt for one line, translating EOF/Ctrl+C into menu exits."""
+    try:
+        return input(prompt)
+    except EOFError:
+        print()
+        raise _MenuExit(0)
+    except KeyboardInterrupt:
+        print("\nOperation canceled by user.", file=sys.stderr)
+        raise _MenuExit(130)
+
+
+def _confirm(prompt: str) -> bool:
+    """Ask an explicit yes/no question. True only on y/yes."""
+    return _ask(prompt).strip().lower() in ("y", "yes")
+
+
+def _find_existing_dump(target_path: Path) -> tuple[Optional[Path], Optional[Path]]:
+    """Locate this project's dump files.
+
+    Returns ``(txt_dump, legacy_markdown_dump)`` where each is an existing
+    path or ``None``. The ``.txt`` search covers the parent directory (the
+    current default location) and the project directory itself.
+    """
+    project_name = target_path.name or "repository"
+    txt_name = f"{project_name}.txt"
+    parent_txt = target_path.parent / txt_name
+    local_txt = target_path / txt_name
+    legacy_md = target_path / f"{project_name}.md"
+
+    txt_dump: Optional[Path] = None
+    if parent_txt.exists() and parent_txt.is_file():
+        txt_dump = parent_txt.resolve()
+    elif local_txt.exists() and local_txt.is_file():
+        txt_dump = local_txt.resolve()
+
+    legacy_dump: Optional[Path] = None
+    if txt_dump is None and legacy_md.exists() and legacy_md.is_file():
+        legacy_dump = legacy_md.resolve()
+    return txt_dump, legacy_dump
+
+
+def _menu_get_dump() -> None:
+    """Menu option 1: dump the current working directory to `.txt`."""
+    target = str(Path.cwd().resolve())
+    default_file = default_output_path(Path.cwd().resolve(), FORMAT_TEXT)
+    print(f"Project: {Path.cwd().resolve().name}")
+    print(f"Default output: {default_file}")
+    try:
+        raw = _ask(f"Output path [{default_file}] (Enter to accept): ").strip()
+    except _MenuExit as e:
+        if e.code != 0:
+            raise
+        print("[INFO] Dump canceled; no file written.")
+        return
+    output = raw or str(default_file)
+    output_path = Path(output).resolve()
+    if output_path.exists() and output_path.is_file():
+        print(f"Output file '{output_path}' already exists.")
+        if not _confirm("Overwrite it? [y/N]: "):
             print("[INFO] Dump canceled; existing file preserved.")
-            return 0
-        return execute_dump(path, force=True, exclude_patterns=list(session_excludes))
-    return execute_dump(path, exclude_patterns=list(session_excludes))
+            return
+        rc = execute_dump(target, output_path=str(output_path), force=True)
+    else:
+        rc = execute_dump(target, output_path=str(output_path))
+    if rc != 0:
+        print(f"[INFO] Dump finished with exit code {rc}.")
+
+
+def _menu_update_dump() -> None:
+    """Menu option 2: regenerate the current project's existing `.txt` dump."""
+    target_path = Path.cwd().resolve()
+    project_name = target_path.name or "repository"
+    txt_dump, legacy_dump = _find_existing_dump(target_path)
+
+    if txt_dump is not None:
+        print(f"Found existing dump: {txt_dump}")
+        if not _confirm(f"Regenerate '{txt_dump.name}' with the latest source? [y/N]: "):
+            print("[INFO] Update canceled; existing file preserved.")
+            return
+        # Atomic writer swaps in the new file; an interrupted update cannot
+        # corrupt the previous dump.
+        rc = execute_dump(str(target_path), output_path=str(txt_dump), force=True)
+        if rc != 0:
+            print(f"[INFO] Update finished with exit code {rc}.")
+        return
+
+    if legacy_dump is not None:
+        print(f"Found a legacy Markdown dump: {legacy_dump}")
+        print("It will be left untouched. A fresh plain-text dump can be created.")
+    else:
+        print(f"No existing dump found for '{project_name}'.")
+    if _confirm("Create a new code dump now? [y/N]: "):
+        _menu_get_dump()
+    else:
+        print("[INFO] No dump created.")
+
+
+def _menu_open_github() -> None:
+    """Menu option 3: open the official repository in the default browser."""
+    print(f"Opening: {GITHUB_REPO_URL}")
+    try:
+        opened = webbrowser.open(GITHUB_REPO_URL)
+    except Exception as exc:
+        opened = False
+        print(f"Could not open the browser: {exc}", file=sys.stderr)
+    if opened:
+        print("Opened in your default browser. If nothing appeared, visit:")
+        print(f"  {GITHUB_REPO_URL}")
+    else:
+        print("The browser could not be opened. Please visit manually:", file=sys.stderr)
+        print(f"  {GITHUB_REPO_URL}", file=sys.stderr)
+
+
+def run_interactive_menu() -> int:
+    """Launch the interactive CodeDumper menu. Returns the exit code."""
+    print(BANNER)
+    try:
+        while True:
+            choice = (_ask(MENU_PROMPT) or "").strip()
+            if choice == "1":
+                _menu_get_dump()
+            elif choice == "2":
+                _menu_update_dump()
+            elif choice == "3":
+                _menu_open_github()
+            elif choice == "4":
+                run_update_interactive()
+            elif choice == "5":
+                print("Goodbye!")
+                return 0
+            else:
+                print(f"Invalid choice: '{choice}'. Please select an option [1-5].")
+    except _MenuExit as e:
+        return e.code
 
 
 def main(args: Optional[List[str]] = None) -> int:
