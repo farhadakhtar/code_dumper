@@ -357,7 +357,8 @@ def test_encoding_fallback_and_reconfigure():
 
     ok, detail = _ensure_block_encodable(_ReconfigurableTty())
     assert ok is True and "reconfigured" in detail
-    assert print_launch_logo(stream=_ReconfigurableTty(), width=100) is True
+    assert print_launch_logo(stream=_ReconfigurableTty(), width=100,
+                             env=wt) is True
     assert any("\u2584" in chunk for chunk in written)
 
 

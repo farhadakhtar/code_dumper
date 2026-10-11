@@ -580,7 +580,8 @@ def diagnose_launch_logo(stream=None, env=None,
     return LaunchDiagnosis(True, "shown", f"{cols}x{rows // 2 + rows % 2} cells")
 
 
-def print_launch_logo(stream=None, width: Optional[int] = None) -> bool:
+def print_launch_logo(stream=None, width: Optional[int] = None,
+                      env=None) -> bool:
     """Print the logo art when the terminal supports it.
 
     Returns ``True`` when art was written, ``False`` for the plain
@@ -589,7 +590,7 @@ def print_launch_logo(stream=None, width: Optional[int] = None) -> bool:
     stderr (normal launches stay silent).
     """
     import sys as _sys
-    diagnosis = diagnose_launch_logo(stream=stream, width=width)
+    diagnosis = diagnose_launch_logo(stream=stream, env=env, width=width)
     if os.environ.get(LOGO_DEBUG_ENV_VAR):
         try:
             print(f"[codedumper-logo] shown={diagnosis.shown} "
