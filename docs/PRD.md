@@ -124,7 +124,7 @@ fabricated.
 |---|---|---|---|
 | **NFR-001** | Performance | Fast scanning/export on steady-state trees. | Warm scan + stream-write of a 1,000-file project (~15 MB text) completes in under 2.0 s (measured ~1.0 s on reference hardware). Cold first-touch scans are environmental (OS/antivirus) and carry no hard gate; correctness is still tested. Verified by `tests/test_performance.py`. |
 | **NFR-002** | Memory efficiency | Bounded memory footprint via streaming writes. | Peak allocation under 100 MB for total text up to ~50 MB (tested at 48.8 MB → 50.3 MB tracemalloc peak). Larger scales are explicitly out of scope for v1 (see §7.2). Verified by `tests/test_performance.py`. |
-| **NFR-003** | Portability | Windows, Linux, macOS on Python 3.10+. | POSIX-normalized (`/`) relative paths in output; `\n` line endings; verified on 3.10/3.11/3.12. Install verified in a clean virtualenv from a wheel; CLI runs from any working directory; `python -m codedumper` is the documented PATH workaround. |
+| **NFR-003** | Portability | Windows, Linux, macOS on Python 3.10+. | POSIX-normalized (`/`) relative paths in output; `\n` line endings; executed here on 3.11/3.12 (no 3.10 interpreter available). Install verified in a clean virtualenv from a wheel; CLI runs from any working directory; `python -m codedumper` is the documented PATH workaround. |
 | **NFR-004** | Security & privacy | Safe defaults, offline only. | No network transmission; symlinks never followed; source tree read-only; filename-only exclusion reporting; secret-content disclaimer in docs. |
 | **NFR-005** | Reliability | No partial/corrupt outputs; no source mutation. | Atomic temp-file write + `os.replace`; source checksums identical before/after. |
 | **NFR-006** | Determinism | Identical file output across runs. | Two runs with identical inputs produce identical SHA-256 of the Markdown file (wall-clock timing is console-only). |
@@ -238,7 +238,7 @@ code transformation, relational-database persistence.
    (except user globs never override FR-011).
 4. Full pytest suite passes; E2E dry-run + write + overwrite + invalid-arg
    paths verified for both `dump` and legacy forms.
-5. `LICENSE` present; `pip install -e .` works on Python 3.10+.
+5. `LICENSE` present; `pip install -e .` works (executed here on Python 3.11 and 3.12; 3.10 supported per `requires-python`).
 6. Wheel builds offline (`pip wheel --no-deps --no-build-isolation`), installs
    in a clean virtualenv, and the CLI runs from an arbitrary working
    directory against an unrelated project without touching it.

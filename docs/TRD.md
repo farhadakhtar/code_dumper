@@ -10,7 +10,9 @@
 
 ## 1. Technology Stack
 
-- **Runtime:** Python 3.10+ (verified 3.10, 3.11, 3.12); CPython.
+- **Runtime:** Python 3.10+ (executed here on 3.11 and 3.12; no 3.10
+  interpreter was available in this environment, so 3.10 is supported per
+  `requires-python` but not executed); CPython.
 - **CLI:** Standard-library `argparse` with a `dump` subcommand + legacy
   positional form + interactive `input()` menu. *Rationale:* zero-dependency,
   testable, matches README's dual interactive/non-interactive contract.
@@ -163,7 +165,9 @@ Recursive from project root; lexicographic sort per directory
 
 ## 8. Performance and Reliability
 
-- 1,000 files / <50 MB text in <2 s; <100 MB peak RAM.
+- Warm steady-state scan + stream-write of 1,000 files (~15 MB text) in
+  <2 s (measured ~1.0 s); ~50 MB text under 100 MB peak RAM (measured
+  48.8 MB → 50.3 MB). Cold first-touch timing is environmental, not gated.
 - `SIGINT` → temp-file cleanup, exit `130`.
 - Disk-full / permission failures → exit `2`, destination untouched.
 
