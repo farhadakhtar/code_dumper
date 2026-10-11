@@ -9,8 +9,11 @@ pixel-perfect reproduction:
 - Downscaling to terminal columns necessarily softens fine detail such as
   the small tagline and ``v1.0.0`` label baked into the artwork.
 - Output requires a true-color, UTF-8 capable terminal (e.g. Windows
-  Terminal). Legacy consoles, pipes, and ``NO_COLOR``/``dumb`` terminals
-  get a graceful plain fallback (menu only, no fake replacement logo).
+  Terminal). On Windows, an interactive console with virtual-terminal
+  processing (already enabled, or enabled on demand) counts as supported
+  even when no environment indicator says so; legacy consoles, pipes, and
+  ``NO_COLOR``/``dumb`` terminals get a graceful plain fallback (menu
+  only, no fake replacement logo).
 - The aspect ratio is preserved (no stretching or clipping); narrow
   windows scale the art down, and very narrow windows skip it.
 - Every fallback path reports a machine-readable reason through
