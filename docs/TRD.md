@@ -233,10 +233,11 @@ no real secrets.
 
 Launch-logo gates (`tests/test_logo.py`): bundled asset provenance (hash),
 real-pixel content, decoder edge cases (all color types, bad input),
-capability matrix (tty/`NO_COLOR`/`TERM`/Windows Terminal), aspect fit and
-narrow-window behavior, missing/invalid asset and unwritable-stream safety,
-dynamic version line, no duplicated tagline/heading text, and packaging
-declarations.
+capability matrix (tty/`NO_COLOR`/`TERM`/Windows Terminal/ConEmu/mintty),
+aspect fit and narrow-window behavior, missing/invalid asset and
+unwritable-stream safety, reason-coded fallback diagnosis for every cause,
+opt-in debug output, encoding precheck/reconfigure paths, dynamic version
+line, no duplicated tagline/heading text, and packaging declarations.
 
 Performance/memory gates (NFR-001/002) are enforced by
 `tests/test_performance.py` on the production streaming path
