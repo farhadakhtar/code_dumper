@@ -1,10 +1,16 @@
 # Product Requirements Document (PRD): CodeDumper
 
-**Document Version:** 2.0.0
+**Document Version:** 2.1.0
 **Status:** Approved
 **Author:** Engineering Team
-**Source of Truth:** `README.md` (working copy: interactive CLI + `dump` subcommand contract)
+**Source of Truth:** `README.md` + working implementation (v1.1.0)
 **File:** `docs/PRD.md`
+
+*v2.1.0 changes: beginner menu (options 1–5), plain-text (`.txt`) default
+output contract, `--format markdown` opt-in, outside-project default
+location with output self-exclusion, update-dump flow, GitHub opener, and
+a real self-update check against official GitHub releases (honest
+unavailable state while no release is published).*
 
 ---
 
@@ -14,8 +20,9 @@
 
 **CodeDumper** is a cross-platform command-line tool that scans a project
 directory, builds a readable directory tree, collects eligible source and
-text files, and exports everything into a single, structured Markdown file
-(`<project-name>.md`).
+text files, and exports everything into a single, structured plain-text
+file (`<project-name>.txt`). A Markdown rendering remains available via
+`--format markdown`.
 
 ### 1.2 Problem Statement
 
@@ -26,17 +33,17 @@ reviewer is friction-heavy:
 - Directory structure and file relationships are lost in chat transcripts.
 - Credential files (`.env`, private keys) are easily pasted by accident.
 - Binary assets and huge files bloat prompts and break token budgets.
-- Source files containing triple backticks corrupt naive Markdown exports.
+- Beginners face a wall of flags; existing dumps go stale; staying updated
+  requires manual reinstall steps.
 
 ### 1.3 Proposed Solution
 
-One command produces one organized document: a `# Codebase Dump` title, a
-`## Project Structure` tree, one `## File: <path>` section per eligible file
-with a language-tagged, fence-escaped code block, and a `## Excluded Files`
-report. An interactive menu (`codedumper` with no arguments) and a
-non-interactive subcommand (`codedumper dump ...`) serve beginners and
-automation equally. All statistics shown are real scan results; nothing is
-fabricated.
+Typing `codedumper` opens a guided menu (get a dump, update a dump, open
+GitHub, check for updates, exit). Dumps default to plain `.txt` outside the
+scanned project, with secrets excluded, binaries skipped, atomic writes,
+and honest update checks against official GitHub releases. Direct commands
+(`codedumper dump ...`) serve scripts and automation. All statistics shown
+are real scan results; nothing is fabricated.
 
 ### 1.4 Product Vision
 
@@ -44,18 +51,20 @@ fabricated.
 
 ### 1.5 Scope and Boundaries
 
-- **In Scope:** Local directory scanning, directory-tree rendering, text
-  collection, Markdown export, interactive menu, `dump` subcommand, exclusion
-  and safety rules, preview mode, progress reporting, exit codes, automated
-  tests.
-- **Out of Scope:** Uploading or transmitting code to any external service or
-  LLM API; git network operations; code execution, minification, or
-  transformation; multiple export formats; token-count estimates; incremental
-  export; configuration profiles; standalone executables; `.codedumperignore`
-  support (all deferred to future releases per `README.md` roadmap).
+- **In Scope:** Local directory scanning, directory-tree rendering,
+  plain-text and Markdown export, interactive menu, `dump` subcommand,
+  exclusion and safety rules, preview mode, dump refresh with overwrite
+  confirmation, browser opener for the official repository, self-update
+  check + verified install, progress reporting, exit codes, automated
+  tests (network/install always mocked).
+- **Out of Scope:** Uploading or transmitting code to any external service
+  or LLM API; git network operations for CodeDumper itself (except reading
+  release metadata over HTTPS); code execution, minification, or
+  transformation; multiple export formats beyond text/Markdown;
+  token-count estimates; incremental export; configuration profiles;
+  standalone executables; `.codedumperignore` support.
 - **Companion (preserved, not in scope):** The existing `autocommit`
-  Git-watcher package is retained as-is. It is not part of the CodeDumper
-  requirements and is not modified by this PRD.
+  Git-watcher package is retained as-is.
 
 ---
 
@@ -65,29 +74,32 @@ fabricated.
 
 1. **AI-assisted developers:** Export a project to feed complete context to an
    AI assistant without manual copy-paste.
-2. **Teammates, researchers, and reviewers:** Read or review a whole codebase
-   from a single document.
-3. **Contributors:** Extend or fix CodeDumper following its docs and tests.
+2. **Beginners:** Get a first dump through a guided menu with no flags to
+   learn.
+3. **Teammates, researchers, and reviewers:** Read or review a whole codebase
+   from a single document; refresh stale dumps safely.
+4. **Contributors:** Extend or fix CodeDumper following its docs and tests.
 
 ### 2.2 Key Workflows
 
-- **W-1 Interactive dump (current project):** User runs `codedumper`, sees the
-  `CODEDUMPER CLI` menu, selects `1`. The tool scans, applies exclusions,
-  collects files, writes `my-application.md`, and prints real counts plus
-  `[OK] Markdown export completed successfully.`
-- **W-2 Interactive dump (another project):** Menu option `2` prompts for a
-  project path, then dumps it.
-- **W-3 Interactive preview:** Menu option `3` runs a dry-run on the current
-  directory and shows counts without writing a file.
-- **W-4 Configure exclusions:** Menu option `4` prompts for extra
-  comma-separated glob patterns used for subsequent menu-driven dumps in the
-  same session.
-- **W-5 Direct dump:** `codedumper dump ./my-project` writes `my-project.md`.
-- **W-6 Custom output:** `codedumper dump ./my-project --output ./exports/codebase.md`.
-- **W-7 Preview:** `codedumper dump ./my-project --dry-run` prints findings
-  without writing a file.
+- **W-1 Get a dump (menu):** User runs `codedumper` in a project, picks `1`,
+  accepts (or overrides) the default `<name>.txt` path outside the project,
+  receives the file plus a real-counts summary.
+- **W-2 Update a dump (menu):** User picks `2`; the tool finds the project's
+  `.txt` dump, confirms, and regenerates it atomically. Missing dump →
+  offer to create; legacy `.md` → left untouched with an explanatory note.
+- **W-3 Open GitHub (menu):** Option `3` opens the official repository in
+  the default browser, or prints a helpful error.
+- **W-4 Update check (menu):** Option `4` shows installed vs latest stable
+  versions; up-to-date → report; available → confirm → install → verify;
+  no releases → honest unavailable state + manual route.
+- **W-5 Direct dump:** `codedumper dump ./my-project` writes
+  `my-project.txt` outside the target.
+- **W-6 Custom output:** `codedumper dump ./my-project --output ./exports/codebase.txt`.
+- **W-7 Preview:** `codedumper dump ./my-project --dry-run` reports without
+  writing.
 - **W-8 Tailored dump:** `codedumper dump ./my-project --include-hidden
-  --exclude node_modules --exclude .venv --max-file-size 1MB`.
+  --exclude node_modules --max-file-size 1MB --format markdown`.
 
 ---
 
@@ -95,26 +107,31 @@ fabricated.
 
 | Requirement ID | Title | Description | Priority |
 |---|---|---|---|
-| **FR-001** | Interactive menu on bare invocation | Running `codedumper` with no arguments launches the `CODEDUMPER CLI` menu with options `1..6` (dump current, dump another, preview, configure exclusions, help, exit). | High |
-| **FR-002** | `dump` subcommand | `codedumper dump [PATH]` dumps the given project; `PATH` defaults to `.` (current directory). | High |
-| **FR-003** | Recursive scanning | The system recursively discovers directories and files under the project root. | High |
-| **FR-004** | Deterministic ordering | Entries are processed in a stable sorted order so repeated runs on unchanged projects produce identical Markdown files (byte-for-byte, excluding console-only timing). | High |
-| **FR-005** | Project Structure tree | The Markdown contains a `## Project Structure` section with an indented, sorted directory tree. | High |
-| **FR-006** | Per-file sections | Each eligible file gets a `## File: <relative/path>` heading and its content in a language-tagged code block (` ```python ` etc., derived from file extension). | High |
-| **FR-007** | Fence escaping | Content containing backtick runs is wrapped in a longer fence (`max(3, longest_run + 1)` backticks) so exports never break. | High |
-| **FR-008** | Binary detection | Files detected as binary (known binary extensions, null bytes, or >30% non-text bytes in an 8 KB sample) are skipped and reported. | High |
-| **FR-009** | Size limit (`--max-file-size`) | `--max-file-size` sets the per-file limit (default `1MB`; units `B`, `KB`, `MB`, `GB`; invalid values are rejected with exit code `1`). Oversized files are skipped and reported. `--max-size` remains as a backward-compatible alias. | High |
-| **FR-010** | Default noise exclusions | VCS internals (`.git`, `.hg`, `.svn`), dependency/caches (`node_modules`, `__pycache__`, `.pytest_cache`, `.venv`, `venv`, `env`, `dist`, `build`, `.idea`, `.vscode`), and lockfiles/noise files are pruned by default. | High |
-| **FR-011** | Sensitive-file protection | Credential patterns (`.env*`, `*.pem`, `*.key`, `id_rsa*`, `id_ed25519*`, `id_ecdsa*`, `*.p12`, `*.pfx`, `credentials.*`, `secrets.*`, `token.json`) are **always** excluded — even with `--include-hidden`. Only filenames/reasons are reported, never secret values. | Critical |
-| **FR-012** | Hidden-file handling | Dotfiles/dot-directories are excluded by default; `--include-hidden` includes them (FR-011 still applies). | High |
-| **FR-013** | Custom exclusions | Repeatable `--exclude PATTERN` (glob matched against filename and relative path) plus menu option `4` session patterns. | Medium |
-| **FR-014** | Output selection | `--output` (`-o`) selects the Markdown destination; default is `<project-dir-name>.md`. Missing parent directories are created. | High |
-| **FR-015** | Overwrite protection | An existing output file is never silently overwritten: non-interactive mode fails with exit code `1` unless `--force` (`-f`) is given (atomic write via temp file + `os.replace`); menu mode asks for explicit confirmation. | High |
-| **FR-016** | Dry-run preview | `--dry-run` (and menu option `3`) scans and reports real statistics without writing any file. | Medium |
-| **FR-017** | Honest reporting | Both the Markdown (`## Excluded Files` table with path + reason) and the console (`Files discovered/included/excluded`, `Sensitive files skipped`, `[INFO]`/`[OK]` lines) show real measured values. Statistics are never fabricated; secret contents are never printed. | High |
-| **FR-018** | Help and version | `codedumper --help`, `codedumper dump --help`, and `codedumper --version` work and exit `0`. | High |
-| **FR-019** | Exit codes | `0` success · `1` usage/validation error (bad path, bad size, output exists without `--force`) · `2` filesystem I/O error · `130` user interrupt (`Ctrl+C`). | High |
-| **FR-020** | Backward compatibility | The legacy direct form `codedumper [TARGET_DIR] [options]` (with `-o`, `-f`, `-e`, `--include-hidden`, `--max-size`, `--no-tree`, `--dry-run`) keeps working; `dump` is the documented primary form. | Medium |
+| **FR-001** | Interactive menu (1–5) | Bare `codedumper` shows the specified menu (get / update / GitHub / update-check / exit); invalid input re-prompts; EOF exits 0; Ctrl+C exits 130; piped stdin works. | High |
+| **FR-002** | `dump` subcommand | `codedumper dump [PATH]` dumps the given project; `PATH` defaults to `.`. | High |
+| **FR-003** | Recursive scanning | Recursively discover directories/files under the project root. | High |
+| **FR-004** | Deterministic ordering | Stable sorted processing; identical inputs → byte-identical files (timing is console-only). | High |
+| **FR-005** | Project structure tree | Plain-text `PROJECT STRUCTURE` section with the sorted directory tree. | High |
+| **FR-006** | Plain-text file sections (default) | Each eligible file gets `FILE: <path>`, `Language:`, `Size:`, `Lines:` lines, verbatim content, and an `END FILE:` marker. No `#`/`##` headings, no code fences. | High |
+| **FR-007** | Markdown opt-in | `--format markdown` renders `# Codebase Dump`, `## Project Structure`, fenced `## File:` sections with dynamic `max(3, run+1)` fences. | Medium |
+| **FR-008** | Binary detection | Extension list, null bytes, or >30% non-text bytes in an 8 KB sample → skip + report. | High |
+| **FR-009** | Size limit (`--max-file-size`) | Default `1MB`; units `B/KB/MB/GB`; invalid rejected (exit 1). `--max-size` alias retained. Oversized files skipped + reported. | High |
+| **FR-010** | Default noise exclusions | VCS internals, dependency/caches, build outputs, lockfiles pruned by default. | High |
+| **FR-011** | Sensitive-file protection | Credential patterns **always** excluded — even with `--include-hidden`. Only filenames/reasons reported, never secret values. | Critical |
+| **FR-012** | Hidden-file handling | Dotfiles excluded by default; `--include-hidden` includes them (FR-011 still applies). | High |
+| **FR-013** | Custom exclusions | Repeatable `--exclude PATTERN` (glob on filename + relative path). | Medium |
+| **FR-014** | Output selection + outside rule | `--output` (`-o`) selects destination; default `<name>.txt` (or `.md` with `--format markdown`) placed **outside** the scanned project when practical (CWD for foreign targets; parent dir for CWD targets; CWD fallback at filesystem root). The output file itself is always excluded from its own scan (`OUTPUT_FILE_SELF`). | High |
+| **FR-015** | Overwrite protection | Existing output never silently overwritten: non-interactive refuses (exit 1) without `--force`; menu asks explicit confirmation. Atomic temp-file + `os.replace` writes. | High |
+| **FR-016** | Dry-run preview | `--dry-run` scans and reports real statistics without writing. | Medium |
+| **FR-017** | Honest reporting | `EXCLUDED FILES` section + console counts (discovered/included/excluded/sensitive/duration/output) show measured values only. | High |
+| **FR-018** | Help and version | `codedumper --help`, `codedumper dump --help`, `codedumper --version` work, exit 0. | High |
+| **FR-019** | Exit codes | `0` ok · `1` usage/validation · `2` I/O error · `130` interrupt. | High |
+| **FR-020** | Backward compatibility | Legacy `codedumper [TARGET_DIR] [options]` keeps working. | Medium |
+| **FR-021** | Update-dump flow | Option 2 locates the project's `.txt` dump, confirms, regenerates; missing → offer create; legacy `.md` → untouched + note; unrelated files never overwritten without confirmation. | High |
+| **FR-022** | GitHub opener | Option 3 opens the official repository URL; browser failure → helpful error. | Low |
+| **FR-023** | Update check | Option 4 reads the installed version, queries the official GitHub Releases `.../releases/latest` source (stable only), and reports up-to-date / available / unavailable (with manual route when no release is published). No release is ever fabricated. | High |
+| **FR-024** | Verified install | On confirmation, install only an allow-listed wheel asset from the official release via pip (no shell, no executed downloads); report success only when the re-read installed version matches; editable installs keep the manual route; all failures report + manual route. | High |
+| **FR-025** | Updater isolation | The updater is a separate module; offline dumping never needs network; tests mock all network/install behavior. | High |
 
 ---
 
@@ -125,12 +142,12 @@ fabricated.
 | **NFR-001** | Performance | Fast scanning/export on steady-state trees. | Warm scan + stream-write of a 1,000-file project (~15 MB text) completes in under 2.0 s (measured ~1.0 s on reference hardware). Cold first-touch scans are environmental (OS/antivirus) and carry no hard gate; correctness is still tested. Verified by `tests/test_performance.py`. |
 | **NFR-002** | Memory efficiency | Bounded memory footprint via streaming writes. | Peak allocation under 100 MB for total text up to ~50 MB (tested at 48.8 MB → 50.3 MB tracemalloc peak). Larger scales are explicitly out of scope for v1 (see §7.2). Verified by `tests/test_performance.py`. |
 | **NFR-003** | Portability | Windows, Linux, macOS on Python 3.10+. | POSIX-normalized (`/`) relative paths in output; `\n` line endings; executed here on 3.11/3.12 (no 3.10 interpreter available). Install verified in a clean virtualenv from a wheel; CLI runs from any working directory; `python -m codedumper` is the documented PATH workaround. |
-| **NFR-004** | Security & privacy | Safe defaults, offline only. | No network transmission; symlinks never followed; source tree read-only; filename-only exclusion reporting; secret-content disclaimer in docs. |
-| **NFR-005** | Reliability | No partial/corrupt outputs; no source mutation. | Atomic temp-file write + `os.replace`; source checksums identical before/after. |
-| **NFR-006** | Determinism | Identical file output across runs. | Two runs with identical inputs produce identical SHA-256 of the Markdown file (wall-clock timing is console-only). |
-| **NFR-007** | Dependency minimization | Standard library only at runtime. | Zero third-party runtime dependencies for `codedumper` (`watchdog`/`GitPython` remain companion-only for `autocommit`). |
-| **NFR-008** | Usability | Clean professional CLI. | Menu banner + numbered options; `[INFO]` progress and `[OK]` completion lines; errors on stderr. |
-| **NFR-009** | Testability | Automated pytest suite on temp projects. | Covers §7 list (empty dirs, paths, unicode, binary/size, secrets, globs, permissions, symlinks, fences, overwrite/args, interactive + non-interactive); no real credentials; no dumping of the repo's own secrets. |
+| **NFR-004** | Security & privacy | Safe defaults, offline dumping. | No network transmission by dump flows (updater HTTPS reads release metadata only); symlinks never followed; source tree read-only; filename-only exclusion reporting; secret-content disclaimer in docs; no credentials in code; untrusted update sources refused. |
+| **NFR-005** | Reliability | No partial/corrupt outputs; no source mutation. | Atomic temp-file write + `os.replace`; source checksums identical before/after; interrupted updates cannot corrupt the previous dump. |
+| **NFR-006** | Determinism | Identical file output across runs. | Two runs with identical inputs produce identical SHA-256 of the dump file (wall-clock timing is console-only); streamed bytes equal in-memory render. |
+| **NFR-007** | Dependency minimization | Standard library only at runtime. | Zero third-party runtime dependencies for `codedumper` including the updater (`urllib`, `webbrowser`, `importlib.metadata` are stdlib). |
+| **NFR-008** | Usability | Clean beginner-friendly CLI. | Exact specified menu; `[INFO]` progress and `[OK]` completion lines; errors on stderr; confirmations before destructive actions. |
+| **NFR-009** | Testability | Automated pytest suite on temp projects. | Covers menus, txt/markdown contracts, update flows, updater states (mocked), paths with spaces, CWD independence, permissions, symlinks, fences, overwrite/args; no real credentials or network/installs. |
 | **NFR-010** | Robust encoding | Mixed-encoding projects never crash the run. | UTF-8 first, `latin-1`/`replace` fallback; unreadable files recorded as omissions. |
 | **NFR-011** | Licensing honesty | No false license claims. | A real `LICENSE` file exists matching the `pyproject.toml` license field. |
 
@@ -138,110 +155,113 @@ fabricated.
 
 ## 5. User Stories and Acceptance Criteria
 
-### US-1: Dump the current project from the menu
+### US-1: First dump from the menu
 
-**Story:** As a developer, I run `codedumper`, pick `1`, and get `my-application.md` to share with an AI assistant.
+**Story:** As a beginner, I run `codedumper`, pick `1`, accept the default
+path, and get `<project>.txt` next to my project.
 **Acceptance:**
-1. Menu matches the `README.md` banner/options (`1..6`).
-2. Output starts with `# Codebase Dump: my-application` and contains `## Project Structure` plus one `## File:` section per eligible file.
-3. Console shows real `Files discovered/included/excluded`, `Sensitive files skipped`, output path, and `[OK] Markdown export completed successfully.`
+1. Menu matches the specified banner/options (`1..5`).
+2. Output starts with `CODEBASE DUMP: <name>` and contains
+   `PROJECT STRUCTURE`, one `FILE:`/`END FILE:` pair per eligible file,
+   and no `#`/`##` headings or fences.
+3. Console shows real counts, duration, output path, and `[OK]`.
 
-### US-2: Dump a specific project non-interactively
+### US-2: Refresh a stale dump
 
-**Story:** As a developer, I run `codedumper dump ./my-project --output ./exports/codebase.md` in a script.
+**Story:** As a developer, I pick `2`, confirm, and my `.txt` is regenerated
+without risking other files.
 **Acceptance:**
-1. The command exits `0` and writes the requested file with actual project contents.
-2. `codedumper dump ./my-project --dry-run` writes nothing and still reports findings.
+1. Existing dump confirmed before overwrite; decline preserves it byte-for-byte.
+2. Missing dump offers creation; legacy `.md` is never modified.
 
-### US-3: Secrets and noise never leak into exports
+### US-3: Secrets stay out
 
-**Story:** As a developer, I trust that `.env`, keys, certificates, `.git/`, `node_modules/`, binaries, and oversized files stay out of the dump.
+**Story:** As a developer, `.env`, keys, binaries, and oversized files never
+reach the dump under any flag combination.
 **Acceptance:**
-1. Such files never appear in a `## File:` section — even with `--include-hidden`.
-2. Each appears in `## Excluded Files` with a reason; no secret value is printed anywhere.
+1. Such files never appear in a `FILE:` section — even with `--include-hidden`.
+2. Each appears in `EXCLUDED FILES` with a reason; no secret value is printed.
 
-### US-4: Fences and overwrite safety
+### US-4: Honest updates
 
-**Story:** As a reviewer, pasted Markdown always renders; my existing files are never clobbered silently.
+**Story:** As a user, option `4` tells me the truth about releases.
 **Acceptance:**
-1. A source file containing ```` ``` ```` is wrapped in a longer fence.
-2. Existing output without `--force` (or without menu confirmation) aborts with exit `1` and preserves the old file.
+1. With no published releases: unavailable state + manual route, zero changes.
+2. Up-to-date: clear report, zero changes. Available (mocked): version
+   shown, confirmation required, success only on verified version match.
 
 ---
 
 ## 6. CLI Contract (normative)
 
 ```text
-codedumper                          # launch interactive menu
-codedumper dump [PATH] [OPTIONS]    # non-interactive dump
-codedumper [PATH] [OPTIONS]         # legacy direct form (FR-020)
+codedumper                              # interactive menu (options 1-5)
+codedumper dump [PATH] [OPTIONS]        # primary non-interactive form
+codedumper [PATH] [OPTIONS]             # legacy form
 ```
 
 `dump` options: `PATH` (default `.`) · `-o, --output PATH` ·
-`-f, --force` · `-e, --exclude PATTERN` (repeatable) ·
-`--include-hidden` · `--max-file-size SIZE` (`--max-size` alias, default `1MB`) ·
-`--no-tree` (legacy-compat: omit `## Project Structure`) · `--dry-run` ·
-`-h, --help` · `-v, --version`. Exit codes per FR-019.
+`--format {text,markdown}` (default `text`) · `-f, --force` ·
+`-e, --exclude PATTERN` (repeatable) · `--include-hidden` ·
+`--max-file-size SIZE` (`--max-size` alias, default `1MB`) · `--no-tree` ·
+`--dry-run` · `-h/--help` · `-v/--version`. Default output per FR-014.
+Exit codes per FR-019.
 
 ---
 
 ## 7. Scope Management
 
-### 7.1 MVP (v1.0 per README roadmap)
+### 7.1 MVP (v1.1)
 
-Menu + `dump` subcommand, scanning/tree/export, exclusion & safety rules,
-preview mode, honest reporting, pytest suite, install docs, `LICENSE`.
+Menu 1–5, `.txt` default + Markdown opt-in, outside-project defaults with
+self-exclusion, update-dump flow, GitHub opener, release check with honest
+unavailable state, pytest suite, install docs, `LICENSE`.
 
-### 7.2 Post-MVP (README roadmap, explicitly deferred)
+### 7.2 Post-MVP (deferred)
 
-`.codedumperignore`, multiple export formats, token-count estimates,
-incremental export/diff, configuration profiles, standalone executables.
-Beyond-envelope scaling (two-pass render for >50 MB text workloads) is
-likewise deferred; see NFR-002 and DRD §6.
+`.codedumperignore`, token-count estimates, incremental export/diff,
+configuration profiles, standalone executables, two-pass render for >50 MB
+text workloads, published-release install path (activates automatically
+once a stable GitHub release with a wheel asset exists).
 
 ### 7.3 Explicitly Out of Scope
 
 Network upload/API transmission, git operations for CodeDumper itself,
-code transformation, relational-database persistence.
+code transformation, relational-database persistence, PyPI publication
+(undescribed as working until published + verified), prerelease auto-install.
 
 ---
 
-## 8. Risks, Assumptions, and Phase-1 Decisions
+## 8. Risks, Assumptions, and Decisions
 
-- **R-1 Secret leakage:** Filename rules cannot catch every secret
-  (high-entropy strings inside normal files). *Mitigation:* conservative
-  blacklist + docs disclaimer that users must review dumps before sharing.
-- **R-2 New-vs-old contract drift:** `README.md` (working copy) redefines the
-  CLI versus the v1.x implementation/docs. *Decision:* this PRD v2.0.0 follows
-  the working-copy `README.md`; legacy flags stay as aliases (FR-020).
-- **R-3 Menu option 4 underspecified:** *Decision:* session-scoped extra
-  exclude patterns prompted at runtime (W-4).
-- **R-4 Overwrite flag unspecified in README:** *Decision:* retain
-  `--force`/`-f` + menu confirmation (FR-015); covered by "overwrite behavior"
-  tests.
-- **R-5 Exit codes unspecified in README:** *Decision:* retain `0/1/2/130`
-  (FR-019).
-- **R-6 Module layout:** README's suggested files are explicitly optional
-  ("do not create unnecessary modules"). *Decision:* keep existing modules;
-  menu lives in `cli.py` (see DRD mapping).
-- **A-1** Default output `<project-dir-name>.md` in the caller's working
-  directory. **A-2** Symlinks never followed. **A-3** Offline-only operation.
+- **R-1 Secret leakage:** Filename rules cannot catch every secret.
+  *Mitigation:* conservative blacklist + review-before-sharing disclaimer.
+- **R-2 No releases published:** The updater's install path cannot trigger
+  live. *Decision:* honest unavailable state + manual route; full install
+  machinery proven by mocked tests (FR-023/FR-024).
+- **R-3 Untrusted updates:** Forged metadata could point elsewhere.
+  *Mitigation:* HTTPS GitHub API source, strict asset-URL allow-list,
+  wheel-only pip installs, version-match verification.
+- **R-4 Editable installs:** Pip-overwriting a checkout corrupts workflows.
+  *Decision:* non-PyPI methods always take the manual route.
+- **R-5 Menu vs scripting:** Interactive prompts block automation.
+  *Decision:* all menu capabilities have non-interactive direct-command
+  equivalents.
+- **A-1** Default output per FR-014. **A-2** Symlinks never followed.
+  **A-3** Dumping is offline-only. **A-4** Single-write default format is
+  plain text.
 
 ---
 
 ## 9. Acceptance Criteria (release gate)
 
-1. Every `README.md` command (`--help`, `--version`, `dump . --dry-run`,
-   `dump . --output ...`, menu options `1..6`) works as documented.
-2. Export matches §1.3 structure with real contents; fences escape correctly.
-3. Secrets/noise/binaries/oversize files excluded under all flag combinations
-   (except user globs never override FR-011).
-4. Full pytest suite passes; E2E dry-run + write + overwrite + invalid-arg
-   paths verified for both `dump` and legacy forms.
-5. `LICENSE` present; `pip install -e .` works (executed here on Python 3.11 and 3.12; 3.10 supported per `requires-python`).
-6. Wheel builds offline (`pip wheel --no-deps --no-build-isolation`), installs
-   in a clean virtualenv, and the CLI runs from an arbitrary working
-   directory against an unrelated project without touching it.
-7. Stale distribution docs removed (`Readme.pdf` deleted; `README.md` is the
-   single install/usage source with the verified GitHub URL and no
-   unpublished-PyPI claims).
+1. Menu matches the specified banner/options; invalid/EOF/Ctrl+C behave.
+2. `.txt` default verified: no `#`/`##`/fences, verbatim source, markers,
+   metadata, exclusion section; `--format markdown` still correct.
+3. Secrets/noise/binaries/oversize excluded under all flag combinations.
+4. Update flows: confirm/decline/missing/legacy all correct; updater states
+   (up-to-date/newer/unavailable/prerelease/malformed/network/untrusted)
+   covered by mocked tests; no project modification by any flow.
+5. Full pytest suite passes; E2E verified for menu + direct forms.
+6. `LICENSE` present; clean-venv wheel install works; CLI runs from any
+   working directory; no PyPI/release claims beyond reality.

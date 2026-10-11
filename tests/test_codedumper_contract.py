@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from codedumper.cli import BANNER, execute_dump, main, run_interactive_menu
+from codedumper.cli import BANNER, MENU_PROMPT, execute_dump, main, run_interactive_menu
 from codedumper.models import ScanConfig
 from codedumper.renderer import render_markdown
 from codedumper.scanner import scan_repository
@@ -229,7 +229,7 @@ def test_console_report_shows_real_counts(mini_project: Path, tmp_path: Path, ca
     assert "Files included:" in captured
     assert "Files excluded:" in captured
     assert "Sensitive files skipped:" in captured
-    assert "[OK] Markdown export completed successfully." in captured
+    assert "[OK] Export completed successfully." in captured
 
 
 def test_unicode_and_spaces(tmp_path: Path):
@@ -276,13 +276,21 @@ def test_menu_banner(capsys):
     with patch("builtins.input", side_effect=["5"]):
         assert run_interactive_menu() == 0
     out = capsys.readouterr().out
-    assert "CODEDUMPER" in out
+    # ASCII-art logo, centered branding, exact subtitle, separator.
+    assert "####" in out
+    assert "CodeDumper" in out
+    assert "Turn your codebase into plain text." in out
+    assert "====" in out
     assert "1. Get a code dump" in out
     assert "2. Update the code dump" in out
     assert "3. See GitHub" in out
     assert "4. Check for updates and install" in out
     assert "5. Exit" in out
-    assert "Select an option [1-5]:" in out
+    # PowerShell/CMD-safe: menu output must be pure ASCII.
+    out.encode("ascii")
+    # The prompt itself is passed to input(), not printed (mocked input
+    # never echoes it), so verify the constant directly.
+    assert MENU_PROMPT == "Select an option [1-5]: "
 
 
 def test_menu_invalid_choice_reprompts(capsys):

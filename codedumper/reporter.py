@@ -34,7 +34,7 @@ def format_cli_summary(result: ScanResult, output_path: Optional[Path], dry_run:
     elif output_path:
         lines.append(f"Output: {output_path.resolve()}")
         lines.append("")
-        lines.append("[OK] Markdown export completed successfully.")
+        lines.append("[OK] Export completed successfully.")
 
     if result.omitted_files:
         lines.append("")

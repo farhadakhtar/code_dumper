@@ -403,8 +403,9 @@ def install_wheel_file(wheel_path: Path, timeout: int = 300) -> Tuple[bool, str]
 def installed_dist_version() -> Optional[str]:
     """Re-read the installed distribution version (post-install check)."""
     try:
+        import importlib
         from importlib import metadata as importlib_metadata
-        importlib_metadata.invalidate_caches()
+        importlib.invalidate_caches()
         return importlib_metadata.version(DISTRIBUTION_NAME)
     except Exception:
         return None

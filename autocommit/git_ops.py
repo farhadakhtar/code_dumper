@@ -187,6 +187,19 @@ def _filename_is_blocked(rel_path: str) -> bool:
     return False
 
 
+SECRET_SCAN_EXEMPT_PREFIXES: tuple[str, ...] = ("docs/", "tests/")
+SECRET_SCAN_EXEMPT_SUFFIXES: tuple[str, ...] = (".md",)
+
+
+def _path_is_secret_scan_exempt(rel_path: str) -> bool:
+    """Docs, tests, and Markdown rarely hold real credentials; prose words
+    like 'secret'/'token' otherwise trigger constant false-positive aborts."""
+    rel = rel_path.replace("\\", "/")
+    if any(rel.startswith(p) or f"/{p}" in rel for p in SECRET_SCAN_EXEMPT_PREFIXES):
+        return True
+    return any(rel.endswith(s) for s in SECRET_SCAN_EXEMPT_SUFFIXES)
+
+
 def scan_staged_diff_for_secrets(repo_root: Path) -> list[str]:
     """
     Return a list of warning strings if the staged diff contains secrets.
@@ -197,9 +210,15 @@ def scan_staged_diff_for_secrets(repo_root: Path) -> list[str]:
         return []
 
     warnings: list[str] = []
+    current_file = ""
     for lineno, line in enumerate(result.stdout.splitlines(), 1):
+        if line.startswith("+++ b/"):
+            current_file = line[6:].strip()
+            continue
         # Only inspect added lines (+) in the diff
         if not line.startswith("+") or line.startswith("+++"):
+            continue
+        if current_file and _path_is_secret_scan_exempt(current_file):
             continue
         for pat in SENSITIVE_PATTERNS:
             if pat.search(line):

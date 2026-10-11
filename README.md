@@ -1,8 +1,8 @@
 # CodeDumper
 
-### Turn any codebase into one organized Markdown document.
+### Turn any codebase into one organized text document.
 
-**CodeDumper** is a command-line tool that scans a project directory, builds a readable directory tree, collects eligible source and text files, and exports everything into a single, structured Markdown file.
+**CodeDumper** is a command-line tool that scans a project directory, builds a readable directory tree, collects eligible source and text files, and exports everything into a single, structured plain-text file.
 
 Instead of manually opening dozens of files to share a codebase with an AI assistant, researcher, teammate, or reviewer, run one command and generate a project dump.
 
@@ -18,15 +18,17 @@ CodeDumper
        +---- Safety & Exclusion Checks
        |
        v
-project-name.md
+project-name.txt
 ```
 
 ## Features
 
-- **One-command export:** Generate a complete Markdown snapshot of a project.
+- **One-command export:** Generate a complete plain-text snapshot of a project.
 - **Readable directory tree:** Understand the structure before reading the source code.
-- **Organized file sections:** Each file receives its own heading and code block.
-- **Automatic project naming:** Generate `my-project.md` from the selected project directory.
+- **Organized file sections:** Each file receives its own `FILE:` section with metadata.
+- **Automatic project naming:** Generate `my-project.txt` from the selected project directory.
+- **Beginner-friendly menu:** Run `codedumper` with no arguments for a guided menu.
+- **Self-update check:** Compare your installed version against official GitHub releases.
 - **Smart exclusions:** Skip common virtual environments, dependency directories, build artifacts, caches, and version-control internals.
 - **Sensitive-file protection:** Exclude common secrets and credential files by default.
 - **Binary-file detection:** Avoid dumping images, executables, and other unsuitable binary content.
@@ -87,43 +89,58 @@ codedumper
 
 ## The CLI experience
 
-CodeDumper should provide a clean, professional interface whenever a user types `codedumper`.
-
-### Launch the application
-
-```bash
-codedumper
-```
-
-Expected interface:
+Type `codedumper` in any project directory to open the interactive menu:
 
 ```text
-   ____          _      ____                           
-  / ___|___   __| | ___|  _ \ _   _ _ __ ___  _ __   ___ _ __
- | |   / _ \ / _` |/ _ \ | | | | | | '_ ` _ \| '_ \ / _ \ '__|
- | |__| (_) | (_| |  __/ |_| | |_| | | | | | | |_) |  __/ |
-  \____\___/ \__,_|\___|____/ \__,_|_| |_| |_| .__/ \___|_|
-                                             |_|
+    ####  ###  ####  ##### ####  #   # #   # ####  ##### ####
+  #     #   # #   # #     #   # #   # ## ## #   # #     #   #
+   #     #   # #   # ####  #   # #   # # # # ####  ####  ####
+   #     #   # #   # #     #   # #   # #   # #     #     # #
+    ####  ###  ####  ##### ####   ###  #   # #     ##### #  #
 
-                  CODEDUMPER CLI
-          Turn your codebase into Markdown.
+                           CodeDumper
+              Turn your codebase into plain text.
+================================================================
 
-  1. Dump the current project
-  2. Dump another project
-  3. Preview project contents
-  4. Configure exclusions
-  5. Help and documentation
-  6. Exit
+What would you like to do?
 
-  Select an option [1-6]:
+  1. Get a code dump
+  2. Update the code dump
+  3. See GitHub
+  4. Check for updates and install
+  5. Exit
+
+Select an option [1-5]:
 ```
 
-This is the proposed interface, not a claim that it already exists. The coding agent should implement it and ensure every menu option works.
+- **1. Get a code dump:** scans the current directory and writes
+  `<project-name>.txt` next to the project (outside it, so later scans
+  never re-ingest the dump). You may accept the default path or type
+  another one. A concise summary (discovered / included / excluded /
+  sensitive-skipped counts, duration, output path) is always shown.
+- **2. Update the code dump:** finds the project's existing `.txt` dump,
+  asks for confirmation, then regenerates it atomically. If no dump
+  exists, it offers to create one. Legacy `.md` dumps are left untouched.
+- **3. See GitHub:** opens `https://github.com/farhadakhtar/code_dumper`
+  in your default browser.
+- **4. Check for updates and install:** compares your installed version
+  against official GitHub releases (stable only, never prereleases),
+  asks before installing anything, and verifies the result. If no
+  release is published yet, it says so and shows a safe manual-update
+  route instead.
+- **5. Exit.**
 
-### Example: Dump the current project
+Invalid choices re-prompt; `Ctrl+C` exits cleanly; closed input exits
+without changes.
+
+### Example: dump the current project
 
 ```text
-Select an option [1-6]: 1
+Select an option [1-5]: 1
+
+Project: my-application
+Default output: D:\Projects\my-application.txt
+Output path [D:\Projects\my-application.txt] (Enter to accept):
 
 [INFO] Project: my-application
 [INFO] Scanning directory...
@@ -135,16 +152,17 @@ Files included:         35
 Files excluded:         13
 Sensitive files skipped: 2
 
-Output: my-application.md
+Output: D:\Projects\my-application.txt
 
-[OK] Markdown export completed successfully.
+[OK] Export completed successfully.
 ```
 
-Counts above are illustrative. The actual CLI must display real scan results and never fabricate statistics.
+Counts above are illustrative. The actual CLI always displays real scan results and never fabricates statistics.
 
 ## Command reference
 
-The CLI should support both interactive use and direct commands.
+The CLI supports both interactive use and direct commands. All direct
+commands below are implemented and covered by automated tests.
 
 ### 1. Dump the current directory
 
@@ -152,7 +170,8 @@ The CLI should support both interactive use and direct commands.
 codedumper
 ```
 
-When no arguments are supplied, launch the interactive menu. The user can choose to dump the current directory.
+When no arguments are supplied, launch the interactive menu. Choose
+option 1 to dump the current directory.
 
 ### 2. Dump a specific project
 
@@ -166,10 +185,16 @@ Windows example:
 codedumper dump "D:\Projects\my-project"
 ```
 
+Without `--output`, the dump is written outside the scanned project:
+`<project-name>.txt` in the current directory (or in the parent directory
+when dumping the current directory itself), so later scans never
+re-ingest the dump. A dump file that ends up inside its own project is
+always excluded from the scan.
+
 ### 3. Choose the output file
 
 ```bash
-codedumper dump ./my-project --output ./exports/codebase.md
+codedumper dump ./my-project --output ./exports/codebase.txt
 ```
 
 ### 4. Preview without exporting
@@ -178,7 +203,7 @@ codedumper dump ./my-project --output ./exports/codebase.md
 codedumper dump ./my-project --dry-run
 ```
 
-Show the discovered files, exclusions, and estimated export details without writing the Markdown dump.
+Show the discovered files, exclusions, and estimated export details without writing the text dump.
 
 ### 5. Include hidden files
 
@@ -200,15 +225,27 @@ codedumper dump ./my-project --exclude node_modules --exclude .venv --exclude di
 codedumper dump ./my-project --max-file-size 1MB
 ```
 
-The implementation should document supported size units and validate invalid values.
+Supported size units: `B`, `KB`, `MB`, `GB` (case-insensitive, e.g.
+`500KB`, `2MB`, `1048576`). Invalid values are rejected with an error.
+`--max-size` works as an alias.
 
-### 8. Display help
+### 8. Choose Markdown output instead
+
+```bash
+codedumper dump ./my-project --format markdown
+```
+
+The default format is plain text (`.txt`). `--format markdown` selects
+the Markdown rendering (`.md`) with language-tagged, dynamically fenced
+code blocks.
+
+### 9. Display help
 
 ```bash
 codedumper --help
 ```
 
-### 9. Display the installed version
+### 10. Display the installed version
 
 ```bash
 codedumper --version
@@ -216,7 +253,11 @@ codedumper --version
 
 The commands and flags above define the intended CLI contract. Implement and test them before documenting them as supported features.
 
-## What does the generated Markdown look like?
+## What does the generated dump look like?
+
+The default output is plain text (`.txt`) — no Markdown headings, no code
+fences. Source contents are embedded verbatim between `FILE:` and
+`END FILE:` markers.
 
 Suppose the project has this structure:
 
@@ -226,68 +267,58 @@ my-project/
 ├── pyproject.toml
 ├── src/
 │   └── app.py
-├── tests/
-│   └── test_app.py
 └── config/
     └── settings.yaml
 ```
 
-CodeDumper generates `my-project.md`:
+CodeDumper generates `my-project.txt`:
 
-```markdown
-# Codebase Dump: my-project
+```text
+CODEBASE DUMP: my-project
 
-## Project Structure
+PROJECT STRUCTURE
+my-project/
+├── README.md
+├── pyproject.toml
+├── src/
+│   └── app.py
+└── config/
+    └── settings.yaml
 
-    my-project/
-    ├── README.md
-    ├── pyproject.toml
-    ├── src/
-    │   └── app.py
-    ├── tests/
-    │   └── test_app.py
-    └── config/
-        └── settings.yaml
+FILE: README.md
+Language: Markdown
+Size: 48 bytes
+Lines: 3
 
-## File: README.md
-
-\`\`\`markdown
 # My Project
 
 Project documentation goes here.
-\`\`\`
 
-## File: pyproject.toml
+END FILE: README.md
 
-\`\`\`toml
-[project]
-name = "my-project"
-\`\`\`
+FILE: src/app.py
+Language: Python
+Size: 45 bytes
+Lines: 2
 
-## File: src/app.py
-
-\`\`\`python
 def main():
     print("Hello, world!")
-\`\`\`
 
-## File: tests/test_app.py
+END FILE: src/app.py
 
-\`\`\`python
-def test_example():
-    assert True
-\`\`\`
+EXCLUDED FILES
+The following files and paths were discovered during scanning but excluded from the dump:
 
-## File: config/settings.yaml
-
-\`\`\`yaml
-debug: false
-\`\`\`
+.git/ | DEFAULT_NOISE_DIRECTORY | -
 ```
 
-The example is illustrative. The real output must contain the actual eligible file contents, not sample content.
+The example is illustrative. The real output contains the actual eligible file contents, not sample content.
 
-CodeDumper must correctly escape Markdown fences when source files contain their own triple-backtick sequences. It should also preserve file paths, text encoding, and file boundaries so the export remains readable and unambiguous.
+Need Markdown instead? Run with `--format markdown` to get language-tagged,
+dynamically fenced code blocks (triple backticks are lengthened automatically
+when source files contain their own backtick sequences). File paths, text
+encoding, and file boundaries are preserved in both formats so the export
+remains readable and unambiguous.
 
 ## Safety and exclusion policy
 
@@ -350,10 +381,10 @@ The final structure may change after requirements analysis. Do not create unnece
 | `cli.py` | Commands, arguments, interactive menu, and terminal output |
 | `scanner.py` | Discover eligible files and directories |
 | `tree.py` | Build a readable project tree |
-| `exporter.py` | Generate the Markdown document |
-| `exclusions.py` | Apply default and user-defined exclusion rules |
-| `safety.py` | Check file types, size limits, links, and sensitive files |
-| `config.py` | Validate settings and configuration |
+| `renderer.py` | Generate the plain-text (and optional Markdown) document |
+| `filter.py` | Apply default and user-defined exclusion rules |
+| `classifier.py` | Check file types, size limits, links, and sensitive files |
+| `updater.py` | Check official releases and coordinate safe self-updates |
 
 A local file-system CLI does not inherently need a database. Any persistent configuration or other storage must be justified by the requirements.
 
@@ -377,7 +408,7 @@ Test the actual CLI:
 codedumper --help
 codedumper --version
 codedumper dump . --dry-run
-codedumper dump . --output ./test-output.md
+codedumper dump . --output ./test-output.txt
 ```
 
 The project should include tests for:
@@ -396,12 +427,43 @@ The project should include tests for:
 
 Tests must run against temporary test projects and must not expose real credentials or accidentally dump the repository's own secrets.
 
+## Updating CodeDumper
+
+Choose option 4 (**Check for updates and install**) in the interactive menu.
+The updater compares your installed version against official stable GitHub
+releases of `farhadakhtar/code_dumper` (prereleases are never offered):
+
+- **Up to date:** it says so and returns to the menu. Nothing changes.
+- **Update available:** it shows the new version and asks for explicit
+  confirmation first. On confirmation it downloads the verified release
+  wheel, installs it with pip, and re-reads the installed version — success
+  is reported only when the versions match. Declining returns to the menu
+  without changes.
+- **No releases published yet:** automatic updating is honestly reported as
+  not configured, with a safe manual route (`git pull` + reinstall, or
+  install a future release wheel) instead of a fabricated download.
+
+Safety notes: only assets served from the official repository's release
+downloads are trusted (anything else is refused); editable/source checkouts
+keep their installation method and always get the manual route; failures
+(network, permissions, interrupted downloads, install errors) are reported
+with the manual route and never as success; your projects and dumps are
+never touched. The core dump workflow has no third-party dependencies and
+works fully offline — the updater is a separate module.
+
 ## Roadmap
+
+### Version 1.1 — Plain-text default, guided menu, update check
+
+- Plain-text (`.txt`) dump format by default; Markdown via `--format`.
+- Beginner-friendly interactive menu (dump, update, GitHub, update check).
+- Safe self-update check against official GitHub releases.
+- Dumps default to outside the scanned project.
 
 ### Version 1.0 — Reliable core CLI
 
 - Directory scanning and tree generation.
-- Markdown export.
+- Markdown export (plain text became the default in v1.1).
 - Interactive terminal menu.
 - Non-interactive commands.
 - Exclusion and safety rules.
@@ -432,7 +494,8 @@ Never include credentials, private keys, or confidential project dumps in issues
 
 ## License
 
-Choose and add an appropriate open-source license before publishing. Do not claim that CodeDumper is released under a license until the repository contains the corresponding license text.
+CodeDumper is released under the MIT License — see the `LICENSE` file in
+this repository.
 
 ## Project philosophy
 

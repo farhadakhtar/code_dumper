@@ -1,9 +1,9 @@
 # Detailed Design Document (DRD): CodeDumper
 
-**Document Version:** 2.0.0
+**Document Version:** 2.1.0
 **Status:** Approved
 **Author:** Engineering Team
-**Source of Truth:** `README.md` + `docs/PRD.md` + `docs/TRD.md` (v2.0.0)
+**Source of Truth:** `README.md` + `docs/PRD.md` + `docs/TRD.md` (v2.1.0)
 **File:** `docs/DRD.md`
 
 ---
@@ -15,7 +15,8 @@
  `codedumper dump …` ──▶ subcommand parser ──▶ ScanConfig ─┤
  legacy `codedumper …` ──▶ legacy parser ──▶ ScanConfig ───┘
                                                         ▼
- Scanner ──▶ Filter Engine ──▶ Classifier ──▶ Tree Builder ──▶ Markdown Renderer ──▶ Atomic Writer ──▶ Reporter
+ Scanner ──▶ Filter Engine ──▶ Classifier ──▶ Tree Builder ──▶ Text/Markdown Renderer ──▶ Atomic Writer ──▶ Reporter
+                                                  └─ menu options 2/3/4 ──▶ dump-locator / browser opener / updater (isolated)
 ```
 
 Single-responsibility modules, one-way data flow through immutable
@@ -38,20 +39,23 @@ code_dumper/
 ├── codedumper/
 │   ├── __init__.py                 # version + public exports
 │   ├── __main__.py                 # `python -m codedumper`
-│   ├── cli.py                      # menu + dump/legacy parsers + orchestration (TR-001/002/007/009/010/012)
+│   ├── cli.py                      # menu (1-5) + dump/legacy parsers + orchestration (TR-001/002/007/009/010/012/020)
 │   ├── models.py                   # ScanConfig / FileItem / OmissionRecord / ScanResult
-│   ├── scanner.py                  # sorted recursion + ingestion (TR-003)
+│   ├── scanner.py                  # sorted recursion + ingestion + output self-exclusion (TR-003)
 │   ├── filter.py                   # precedence chain (TR-008)
 │   ├── classifier.py               # binary/language/encoding (TR-006)
-│   ├── tree.py                     # Project Structure tree (TR-004)
-│   ├── renderer.py                 # Markdown: title/tree/File sections/Excluded Files (TR-005/011)
-│   ├── writer.py                   # atomic write + overwrite guard (TR-009)
+│   ├── tree.py                     # structure tree (TR-004)
+│   ├── renderer.py                 # text + Markdown parts/renderers (TR-005/011)
+│   ├── writer.py                   # atomic write/stream + overwrite guard (TR-009)
+│   ├── updater.py                  # release check + verified install, isolated (TR-021)
 │   └── reporter.py                 # console summary (TR-011)
 ├── autocommit/                     # preserved companion (out of CodeDumper scope)
 ├── docs/                           # PRD/ERD/TRD/DRD/EDR/TRACEABILITY/ASSESSMENT
 └── tests/
     ├── test_codedumper.py          # engine + legacy CLI tests
-    └── test_codedumper_contract.py # v2 contract: dump/menu/format tests
+    ├── test_codedumper_contract.py # contract: dump/menu/format tests
+    ├── test_ux_update.py           # menu flows, .txt contract, updater (mocked)
+    └── test_performance.py         # NFR-001/002 benchmarks + determinism
 ```
 
 ---
@@ -130,20 +134,25 @@ Glyphs `├── └── │   `, dirs suffixed `/`, sorted identically to th
 Shows eligible layout including omitted paths (noise pruned); sensitive
 **names** may appear in the tree but their **contents** are never embedded.
 
-### 3.5 `renderer` — Markdown serialization (TR-005/011)
+### 3.5 `renderer` — text + Markdown serialization (TR-005/011)
 
 ```python
 def calculate_code_fence(content: str) -> str: ...  # "`" * max(3, longest_run + 1)
 def format_size(size_bytes: int) -> str: ...
-def iter_markdown_parts(config: ScanConfig, result: ScanResult): ...  # yields document pieces
+def format_size_plain(size_bytes: int) -> str: ...  # "N bytes" wording
+def display_language(tag: str) -> str: ...          # human-friendly names
+def iter_text_parts(config: ScanConfig, result: ScanResult): ...       # default .txt
+def render_text(config: ScanConfig, result: ScanResult) -> str: ...
+def iter_markdown_parts(config: ScanConfig, result: ScanResult): ...   # --format markdown
 def render_markdown(config: ScanConfig, result: ScanResult) -> str: ...  # "\n".join(parts)
 ```
 
-Layout: `# Codebase Dump: <project>` →
-`## Project Structure` (indented block; skipped when `no_tree`) →
-`## File: <rel>` + `- Language: … | Size: … | Lines: …` + fenced content
-(repeated, sorted) → `## Excluded Files` table when omissions exist. No
-timestamps inside the file (determinism).
+Text layout: `CODEBASE DUMP: <project>` → `PROJECT STRUCTURE` →
+`FILE: <rel>` + `Language:`/`Size:`/`Lines:` + verbatim content +
+`END FILE:` (repeated, sorted) → `EXCLUDED FILES` list when omissions
+exist. No `#`/`##` headings, no fences. Markdown layout: `# Codebase
+Dump:` → `## Project Structure` → fenced `## File:` sections →
+`## Excluded Files` table. No timestamps in either (determinism).
 
 ### 3.6 `writer` — atomic persistence (TR-009)
 
@@ -159,23 +168,41 @@ incrementally (byte-identical to `"\n".join(parts)`) so the production path
 never materializes the whole document string; `write_dump_file` remains for
 API/test compatibility.
 
-### 3.7 `cli` — menu + parsers + orchestration (TR-001/002/007/009/010/012)
+### 3.7 `cli` — menu + parsers + orchestration (TR-001/002/007/009/010/012/020)
 
 ```python
-BANNER: str                        # CODEDUMPER CLI banner
+BANNER: str                        # specified 1-5 menu text
 def build_parser() -> argparse.ArgumentParser: ...   # dump subcommand + legacy
 def parse_size_str(val: str) -> int: ...             # B/KB/MB/GB grammar
-def run_interactive_menu() -> int: ...               # options 1..6
+def default_output_path(target: Path, format: str) -> Path: ...  # outside-project rule
+def run_interactive_menu() -> int: ...               # options 1-5
 def execute_dump(target_dir, output_path, force, exclude_patterns,  # shared dump pipeline
-                 include_hidden, max_size, no_tree, dry_run) -> int: ...
+                 include_hidden, max_size, no_tree, dry_run, dump_format) -> int: ...
 def main(argv: list[str] | None = None) -> int: ...
 ```
 
 Dispatch: `argv == []` (or `None` resolved to `[]`) → menu; first token
-`dump` → subcommand; else legacy path. `--max-file-size` primary,
-`--max-size` alias. Menu option `2` prompts for a path; option `4` prompts
-for comma-separated globs stored for the session; option `5` prints help;
-`6`/EOF exits `0`; `KeyboardInterrupt` → `130`.
+`dump` → subcommand; else legacy path. `--format {text,markdown}`
+(default `text`), `--max-file-size` primary, `--max-size` alias. Option
+`1` prompts for an output path (default accepted on Enter); option `2`
+confirms before regenerating the located `.txt` dump; option `3` opens
+the browser; option `4` delegates to `updater.run_update_interactive`;
+`5`/EOF exits `0`; `KeyboardInterrupt` → `130`.
+
+### 3.9 `updater` — release check + verified install (TR-021)
+
+```python
+RELEASES_LATEST_URL: str           # api.github.com .../releases/latest (stable only)
+def check_for_updates(fetcher=fetch_latest_release) -> UpdateCheck: ...  # never raises
+def fetch_latest_release(timeout=...) -> ReleaseInfo: ...  # prerelease/draft refused
+def is_newer(latest: str, installed: str) -> bool | None: ...
+def detect_install_method() -> str: ...  # editable:/git:/pypi/other:/unknown
+def select_install_asset(release) -> dict | None: ...  # strict URL allow-list
+def download_asset(url, dest_dir, ...) -> Path: ...    # size-capped, temp-only
+def install_wheel_file(path, ...) -> tuple[bool, str]: ...  # pip argv, no shell
+def installed_dist_version() -> str | None: ...        # post-install verification
+def run_update_interactive() -> int: ...               # full menu flow, always returns to menu
+```
 
 ### 3.8 Suggested-module mapping (README §"Technical design")
 
@@ -204,17 +231,17 @@ flowchart TD
     HasArgs -->|None| Menu[Interactive menu 1..6]
     HasArgs -->|First token is dump| Sub[Parse dump subcommand]
     HasArgs -->|Otherwise| Leg[Parse legacy form]
-    Menu -->|1/2| Cfg[Build ScanConfig]
-    Menu -->|3| Dry[ScanConfig dry_run=True]
-    Menu -->|4| Sess[Store session globs → Menu]
-    Menu -->|5| Help[Print help → Menu]
-    Menu -->|6/EOF| Exit0([Exit 0])
+    Menu -->|1| Get[Dump CWD to .txt, path prompt]
+    Menu -->|2| Update[Find .txt → confirm → regenerate / offer create]
+    Menu -->|3| Browser[Open official repo / helpful error]
+    Menu -->|4| Updater[Check → confirm → install → verify]
+    Menu -->|5/EOF| Exit0([Exit 0])
     Sub --> Val{Valid?}
     Leg --> Val
     Val -->|No| Exit1[Exit 1]
     Val -->|Yes| Scan[scan_repository]
-    Scan --> Render[render_markdown]
-    Render --> IsDry{--dry-run?}
+    Scan --> Stream[iter_*_parts → write_dump_stream]
+    Stream --> IsDry{--dry-run?}
     IsDry -->|Yes| Report[Console report]
     IsDry -->|No| Guard{Exists && !--force?}
     Guard -->|Yes + non-interactive| Exit1
@@ -270,7 +297,12 @@ flowchart TD
   Files/Omission Manifest` retired (one existing test updated).
 - **Stdlib-only retained:** README permits any modular Python, but zero-dep
   preserves installability and auditability; no behavior needs third-party
-  code.
+  code (updater uses `urllib`/`webbrowser`/`importlib.metadata`).
+- **Plain-text default:** Markdown stays available via `--format` so prior
+  behavior is preserved opt-in; fence logic retained only for that format.
+- **Updater honesty over automation:** with no published releases, the only
+  live behavior is the unavailable state + manual route; the install path
+  is fully implemented but proven by mocked tests, never by live runs.
 - **Streaming writes, in-memory model kept:** the CLI persists via
   `iter_markdown_parts` + `write_dump_stream` (peak ≈ contents size, measured
   50.3 MB at 48.8 MB text), while `ScanResult` still holds file contents and

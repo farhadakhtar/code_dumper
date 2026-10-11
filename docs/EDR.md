@@ -1,6 +1,6 @@
 # Engineering Design Review (EDR): CodeDumper
 
-**Document Version:** 2.0.0
+**Document Version:** 2.1.0
 **Status:** Approved
 **Review Lead:** Principal Systems Engineer
 **Scope:** `README.md` (working copy) vs. v1.x implementation/docs
@@ -140,3 +140,33 @@ The v2 contract is complete, feasible, and internally consistent. Proceed to
 Phase 4: implement the menu + `dump` subcommand + output format + `LICENSE` +
 contract tests, keeping all existing safety behavior and the full v1 test
 suite green (modulo the one retired-headings assertion).
+
+---
+
+## 11. v2.1 Addendum — Plain-Text Default, New Menu, Self-Update Check
+
+The v2 verdict stands; this addendum approves the v2.1 deltas against the
+same review bars:
+
+1. **Plain-text default** (`.txt`, no `#`/fences, verbatim source) with
+   Markdown kept as `--format markdown`: strictly reduces surprise for
+   beginners while preserving the proven renderer behind a flag. The
+   outside-project default location plus `OUTPUT_FILE_SELF` self-exclusion
+   close the self-ingestion hole by construction.
+2. **Menu 1–5** (get / update / GitHub / update-check / exit): each branch
+   reuses tested primitives (`execute_dump`, atomic writer, updater module);
+   destructive actions require explicit confirmation; EOF/Ctrl+C/non-tty
+   paths specified and tested.
+3. **Updater isolation and honesty:** separate stdlib-only module; dumping
+   never needs network; with zero published releases the only live behavior
+   is the verified unavailable state + manual route, while the install path
+   (allow-listed wheel → pip argv → version-match verification) is proven
+   by mocked tests. No credentials, no executed downloads, editable
+   installs preserved via the manual route.
+4. **Regression surface:** retired menu options (dump-another, session
+   globs, help-printer) and retired default `.md` output are covered by
+   updated assertions; engine, safety, determinism, and benchmark suites
+   are untouched in behavior.
+
+**VERDICT: v2.1 APPROVED FOR BUILD.** No release, tag, or publication is
+authorized by this review.
