@@ -91,7 +91,8 @@ codedumper
 
 Type `codedumper` in any project directory to open the interactive menu.
 On a true-color terminal (e.g. Windows Terminal) the launch shows the
-official CodeDumper logo rendered from the bundled `logo.png` artwork,
+official CodeDumper logo rendered from the bundled `logo.png` artwork —
+centered, capped at a readable width with margins, aspect-preserved —
 followed by the installed version and the menu:
 
 ```text
@@ -116,6 +117,9 @@ logo.
 > fallback reason (`not-a-tty`, `no-color`, `dumb-terminal`,
 > `no-truecolor-indicators`, `windows-vt-unavailable`, `narrow-window`,
 > `asset-missing`, `decode-failed`, `encoding`, `write-failed`) to stderr.
+> Note: `$env:` assignments persist for the whole PowerShell session, so
+> remove it afterwards with `Remove-Item Env:\CODEDUMPER_LOGO_DEBUG` —
+> otherwise the diagnostic line keeps appearing on every launch.
 > On Windows, an interactive console with virtual-terminal processing
 > renders the logo even when no environment indicator is set; a common
 > remaining cause is a non-UTF-8 console code page — run `chcp 65001`
