@@ -108,10 +108,16 @@ Order: sensitive → default noise → hidden → user globs → size.
 ### 3.3 `classifier` — safety checks (TR-006)
 
 ```python
-def is_binary_file(file_path: Path, sample_size: int = 8192) -> bool: ...
+def is_binary_bytes(data: bytes, suffix: str = "", sample_size: int = 8192) -> bool: ...
+def is_binary_file(file_path: Path, sample_size: int = 8192) -> bool: ...  # delegates to is_binary_bytes
 def detect_language(file_path: Path) -> str: ...   # ext map, fallback "text"
-def read_text_safely(file_path: Path) -> tuple[str, str]: ...  # utf-8 → latin-1 → utf-8/replace
+def decode_bytes_safely(raw_bytes: bytes) -> tuple[str, str]: ...  # utf-8 → latin-1 → utf-8/replace
+def read_text_safely(file_path: Path) -> tuple[str, str]: ...      # reads, then delegates
 ```
+
+The scanner reads each file once and classifies/decodes the bytes in memory
+(one open per file instead of two). Verdicts are identical to the
+path-based functions, which remain as the public/tested API.
 
 ### 3.4 `tree` — structure view (TR-004)
 
@@ -129,7 +135,8 @@ Shows eligible layout including omitted paths (noise pruned); sensitive
 ```python
 def calculate_code_fence(content: str) -> str: ...  # "`" * max(3, longest_run + 1)
 def format_size(size_bytes: int) -> str: ...
-def render_markdown(config: ScanConfig, result: ScanResult) -> str: ...
+def iter_markdown_parts(config: ScanConfig, result: ScanResult): ...  # yields document pieces
+def render_markdown(config: ScanConfig, result: ScanResult) -> str: ...  # "\n".join(parts)
 ```
 
 Layout: `# Codebase Dump: <project>` →
@@ -142,11 +149,15 @@ timestamps inside the file (determinism).
 
 ```python
 def write_dump_file(output_path: Path, content: str, force: bool = False) -> int: ...
+def write_dump_stream(output_path: Path, parts: Iterable[str], force: bool = False) -> int: ...
 ```
 
 Refuse-if-exists without `force` (`FileExistsError` → exit `1`); `mkdir -p`
 parents; temp sibling `.tmp.<pid>.<name>` + `flush/fsync` + `os.replace`;
-temp cleanup on failure.
+temp cleanup on failure. `write_dump_stream` joins `parts` with `"\n"`
+incrementally (byte-identical to `"\n".join(parts)`) so the production path
+never materializes the whole document string; `write_dump_file` remains for
+API/test compatibility.
 
 ### 3.7 `cli` — menu + parsers + orchestration (TR-001/002/007/009/010/012)
 
@@ -155,7 +166,8 @@ BANNER: str                        # CODEDUMPER CLI banner
 def build_parser() -> argparse.ArgumentParser: ...   # dump subcommand + legacy
 def parse_size_str(val: str) -> int: ...             # B/KB/MB/GB grammar
 def run_interactive_menu() -> int: ...               # options 1..6
-def run_dump(args: argparse.Namespace) -> int: ...   # shared dump pipeline
+def execute_dump(target_dir, output_path, force, exclude_patterns,  # shared dump pipeline
+                 include_hidden, max_size, no_tree, dry_run) -> int: ...
 def main(argv: list[str] | None = None) -> int: ...
 ```
 
@@ -259,3 +271,9 @@ flowchart TD
 - **Stdlib-only retained:** README permits any modular Python, but zero-dep
   preserves installability and auditability; no behavior needs third-party
   code.
+- **Streaming writes, in-memory model kept:** the CLI persists via
+  `iter_markdown_parts` + `write_dump_stream` (peak ≈ contents size, measured
+  50.3 MB at 48.8 MB text), while `ScanResult` still holds file contents and
+  `render_markdown` stays for library/test use. A two-pass (re-read at
+  render) design could push further but was rejected as destabilizing for
+  v1; workloads beyond the NFR-002 envelope are post-MVP future work.
