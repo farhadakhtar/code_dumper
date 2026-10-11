@@ -215,16 +215,27 @@ def test_render_structure_and_row_parity():
     art = render_logo_for_width(80)
     assert art is not None
     rows = art.split("\n")
-    assert len(rows) == 6  # 11 downscaled rows paired into 6 character rows
+    # 80 cols -> 4-col margins -> 72 art cols -> 10 image rows -> 5 lines.
+    assert len(rows) == 5
     for row in rows:
         assert row.endswith(logo.RESET)
-        assert row.count("\u2584") == 80
+        assert row.count("\u2584") == 72
         assert "38;2;" in row and "48;2;" in row
-    # Odd row counts pair the last row against black.
-    small = bytes((255, 255, 255, 255)) * (4 * 3)
-    odd = render_half_blocks(small, 4, 3)
+        # Centered with leading spaces only (no trailing whitespace).
+        assert row.startswith("    ")
+        assert row == row.rstrip()
+    # Foreground carries the BOTTOM pixel, background the TOP pixel:
+    # a red-over-blue pair must render blue-fg on red-bg.
+    pair = bytes((255, 0, 0, 255, 0, 0, 255, 255))
+    one = render_half_blocks(pair + pair, 2, 2)
+    assert "38;2;0;0;255" in one  # fg = bottom (blue)
+    assert "48;2;255;0;0" in one  # bg = top (red)
+    # An unpaired final row fills the whole cell with its own color.
+    white3 = bytes((255, 255, 255, 255)) * (4 * 3)
+    odd = render_half_blocks(white3, 4, 3)
     assert odd.count("\n") == 1  # two character rows
-    assert "48;2;0;0;0m" in odd.split("\n")[1]
+    assert "38;2;255;255;255" in odd.split("\n")[1]
+    assert "48;2;255;255;255" in odd.split("\n")[1]
 
 
 def test_narrow_window_skips_art():
@@ -232,7 +243,54 @@ def test_narrow_window_skips_art():
     assert render_logo_for_width(10) is None
     art = render_logo_for_width(40)
     assert art is not None
-    assert len(art.split("\n")) == 3  # 6 downscaled rows, paired
+    assert len(art.split("\n")) == 3  # 5 downscaled rows, paired
+
+
+def test_display_fit_caps_margins_and_centering():
+    from codedumper.logo import fit_display
+    # Fits nothing below the usable minimum.
+    assert fit_display(30, 882, 232) is None
+    assert fit_display(39, 882, 232) is None
+    # 40-col terminal: usable 32 -> art + symmetric margins.
+    assert fit_display(40, 882, 232) == (32, 5, 4)
+    # 80-col terminal: capped by margins, centered.
+    cols, rows, pad = fit_display(80, 882, 232)
+    assert (cols, rows, pad) == (72, 10, 4)
+    # Wide terminal: hard cap at LOGO_MAX_COLS, centered.
+    cols, rows, pad = fit_display(200, 882, 232)
+    assert cols == logo.LOGO_MAX_COLS
+    assert rows <= logo.MAX_ART_ROWS
+    assert pad == (200 - cols) // 2
+    assert pad > 0
+    # Aspect ratio preserved (2 image rows per character row).
+    assert abs(rows - cols * 232 / 882 / 2) <= 1.0
+
+
+def test_rendered_rows_never_clip_or_wrap():
+    import re
+    for term_cols in (40, 80, 120, 200):
+        art = render_logo_for_width(term_cols)
+        assert art is not None
+        for row in art.split("\n"):
+            visible = re.sub(r"\x1b\[[0-9;]*m", "", row)
+            assert len(visible) <= term_cols
+            assert row == row.rstrip()  # no trailing whitespace
+    # Resizing changes scale deterministically.
+    small = render_logo_for_width(60)
+    large = render_logo_for_width(160)
+    assert small is not None and large is not None
+    assert small.count("\u2584") < large.count("\u2584")
+
+
+def test_box_sampling_is_smooth_not_blocky():
+    from codedumper.logo import downscale_rgba
+    # Uniform input stays uniform (no invented artifacts).
+    red = bytes((200, 10, 10, 255)) * (8 * 8)
+    assert downscale_rgba(red, 8, 8, 4, 4) == bytes((200, 10, 10, 255)) * (4 * 4)
+    # A hard black/white edge averages to mid gray, not a random side.
+    edge = bytes((0, 0, 0, 255)) * 4 + bytes((255, 255, 255, 255)) * 4
+    mid = downscale_rgba(edge, 8, 1, 1, 1)
+    assert list(mid) == [127, 127, 127, 255]
 
 
 def test_print_fallback_never_raises():
