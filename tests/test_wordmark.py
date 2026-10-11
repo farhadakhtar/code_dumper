@@ -77,7 +77,7 @@ def test_color_enabled_matrix():
     assert _color_enabled(_Tty(), {}) is True
     assert _color_enabled(_Pipe(), {}) is False
     assert _color_enabled(_Tty(), {"NO_COLOR": "1"}) is False
-    assert _color_enabled(_Pipe(), {"CLICOLOR_FORCE": "1"}) is False  # NO_COLOR wins below
+    assert _color_enabled(_Tty(), {"NO_COLOR": "1", "CLICOLOR_FORCE": "1"}) is False
     assert _color_enabled(_Tty(), {"TERM": "dumb"}) is False
     assert _color_enabled(_Pipe(), {"CLICOLOR_FORCE": "1"}) is True
     assert _color_enabled(_Tty(), {"CLICOLOR_FORCE": "0"}) is True  # tty still counts
