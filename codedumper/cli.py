@@ -187,6 +187,26 @@ def build_dump_parser() -> argparse.ArgumentParser:
     return dump_parser
 
 
+def default_output_path(target_path: Path, dump_format: str) -> Path:
+    """Predictable default dump location: outside the scanned project.
+
+    - Dumping another project from elsewhere: ``<name>.txt`` in the current
+      working directory (already outside the target).
+    - Dumping the current directory: ``<name>.txt`` in the *parent*
+      directory, so later scans of the project do not re-ingest the dump.
+    - Fallback (e.g. filesystem root, where parent == target): current
+      directory. The scanner additionally always excludes the output file
+      itself (``OUTPUT_FILE_SELF``), so a dump inside its own project can
+      never be embedded.
+    """
+    extension = FORMAT_EXTENSIONS.get(dump_format, "txt")
+    base_name = f"{target_path.name or 'repository'}.{extension}"
+    current_dir = Path.cwd().resolve()
+    if target_path == current_dir and target_path.parent != target_path:
+        return target_path.parent / base_name
+    return current_dir / base_name
+
+
 def execute_dump(
     target_dir: str,
     output_path: Optional[str] = None,
@@ -196,8 +216,13 @@ def execute_dump(
     max_size: str = "1MB",
     no_tree: bool = False,
     dry_run: bool = False,
+    dump_format: str = FORMAT_TEXT,
 ) -> int:
     """Run one full scan-and-export cycle. Returns the process exit code."""
+    if dump_format not in FORMAT_CHOICES:
+        print(f"Error: Unknown format: '{dump_format}'. Choose from: {', '.join(FORMAT_CHOICES)}.", file=sys.stderr)
+        return 1
+
     target_path = Path(target_dir).resolve()
     if not target_path.exists():
         print(f"Error: Target directory does not exist: '{target_path}'", file=sys.stderr)
@@ -219,8 +244,7 @@ def execute_dump(
     if output_path:
         output_file = Path(output_path).resolve()
     else:
-        dir_name = target_path.name or "repository"
-        output_file = Path(f"{dir_name}.md").resolve()
+        output_file = default_output_path(target_path, dump_format)
 
     # Pre-flight check: destination existence
     if not dry_run and output_file.exists() and not force:
@@ -255,12 +279,16 @@ def execute_dump(
     print("[INFO] Collecting eligible files...")
 
     # Persist (streaming: the document is encoded and written piece by piece
-    # so the joined Markdown string is never materialized) or dry-run
+    # so the joined document string is never materialized) or dry-run
     if not config.dry_run:
         try:
+            if dump_format == FORMAT_MARKDOWN:
+                parts = iter_markdown_parts(config, result)
+            else:
+                parts = iter_text_parts(config, result)
             write_dump_stream(
                 config.output_path,
-                iter_markdown_parts(config, result),
+                parts,
                 force=config.force,
             )
         except FileExistsError as e:
