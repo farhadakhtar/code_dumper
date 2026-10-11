@@ -1,4 +1,4 @@
-"""Self-update support for CodeDumper (menu option 4).
+"""Self-update support for CodeDumper (callable update-check flow).
 
 Single source of truth for release metadata: GitHub Releases of the
 official repository::
