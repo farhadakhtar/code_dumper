@@ -13,6 +13,10 @@ pixel-perfect reproduction:
   get a graceful plain fallback (menu only, no fake replacement logo).
 - The aspect ratio is preserved (no stretching or clipping); narrow
   windows scale the art down, and very narrow windows skip it.
+- Every fallback path reports a machine-readable reason through
+  :func:`diagnose_launch_logo` (reasons also asserted in tests). Set
+  ``CODEDUMPER_LOGO_DEBUG=1`` to print the reason to stderr on real
+  launches; normal launches stay silent.
 
 Standard library only: ``zlib`` for DEFLATE, hand-rolled PNG unfiltering
 for 8-bit non-interlaced images (gray / gray+alpha / truecolor /
@@ -25,6 +29,7 @@ import os
 import struct
 import sys
 import zlib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO, Dict, List, Optional, Tuple
 
@@ -32,6 +37,8 @@ LOGO_FILENAME = "logo.png"
 # Provenance: sha256 of the repository-root source image this asset was
 # copied from (copy is byte-identical; the original is never modified).
 LOGO_SOURCE_SHA256 = "2490db09391001e9472cd34812fa030a40e29d43f88293fcb0a42f6be394ac79"
+# Opt-in stderr diagnostic for real launches (never printed otherwise).
+LOGO_DEBUG_ENV_VAR = "CODEDUMPER_LOGO_DEBUG"
 
 HALF_BLOCK = "\u2584"  # LOWER HALF BLOCK
 ESC = "\x1b"
@@ -62,6 +69,40 @@ def logo_asset_path() -> Optional[Path]:
         fallback = Path(__file__).with_name(LOGO_FILENAME)
         if fallback.is_file():
             return fallback
+    except OSError:
+        pass
+    return None
+
+
+def logo_asset_bytes(asset: Optional[Path] = None) -> Optional[bytes]:
+    """Read the bundled logo bytes, or ``None`` when unavailable.
+
+    Uses ``importlib.resources`` byte access first so zipped or otherwise
+    non-filesystem installs work too — never assumes the asset is a plain
+    file on disk, and never touches the current working directory.
+    """
+    if asset is not None:
+        try:
+            data = asset.read_bytes()
+            return data or None
+        except OSError:
+            return None
+    try:
+        from importlib import resources as importlib_resources
+        traversable = importlib_resources.files("codedumper").joinpath(LOGO_FILENAME)
+        try:
+            data = traversable.read_bytes()
+            if data:
+                return bytes(data)
+        except (OSError, ValueError):
+            pass
+    except Exception:
+        pass
+    try:
+        fallback = Path(__file__).with_name(LOGO_FILENAME)
+        if fallback.is_file():
+            data = fallback.read_bytes()
+            return data or None
     except OSError:
         pass
     return None
