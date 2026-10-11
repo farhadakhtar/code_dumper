@@ -23,31 +23,33 @@ from codedumper.models import ScanConfig
 from codedumper.renderer import iter_markdown_parts, iter_text_parts
 from codedumper.reporter import format_cli_summary
 from codedumper.scanner import scan_repository
-from codedumper.updater import GITHUB_REPO_URL, run_update_interactive
+from codedumper.updater import GITHUB_REPO_URL
 from codedumper.writer import write_dump_stream
 
 
 BANNER = """\
-    ####  ###  ####  ##### ####  #   # #   # ####  ##### ####
-  #     #   # #   # #     #   # #   # ## ## #   # #     #   #
-   #     #   # #   # ####  #   # #   # # # # ####  ####  ####
-   #     #   # #   # #     #   # #   # #   # #     #     # #
-    ####  ###  ####  ##### ####   ###  #   # #     ##### #  #
+                 CODEDUMPER CLI
 
-                           CodeDumper
-              Turn your codebase into plain text.
-================================================================
+         Turn your codebase into Markdown.
 
-What would you like to do?
 
-  1. Get a code dump
-  2. Update the code dump
-  3. See GitHub
-  4. Check for updates and install
-  5. Exit
+ 1. Dump the current project
+
+ 2. Dump another project
+
+ 3. Preview project contents
+
+4. Update
+
+ 4. Configure exclusions
+
+ 5. Help and documentation
+
+ 6. Exit
+
 """
 
-MENU_PROMPT = "Select an option [1-5]: "
+MENU_PROMPT = " Select an option [1-6]: "
 
 FORMAT_TEXT = "text"
 FORMAT_MARKDOWN = "markdown"
