@@ -113,7 +113,7 @@ def test_benchmark_cold_first_scan_correct(fresh_project: Path):
     First-touch cost is environmental (OS page cache misses, on-access
     antivirus scanning of new files) and varies by machine, so this test
     asserts correctness and a loose regression guardrail while reporting
-    the measured number. The hard <2.0 s gate applies to the warm test.
+    the measured number. The hard <4.0 s gate applies to the warm test.
     """
     config = _config_for(fresh_project, "bench_cold.md")
     started = time.perf_counter()
