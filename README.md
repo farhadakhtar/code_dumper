@@ -1,7 +1,7 @@
 # CodeDumper
 
 ### Turn any codebase into one organized text document.
-
+![alt text](logo-1.png)
 **CodeDumper** is a command-line tool that scans a project directory, builds a readable directory tree, collects eligible source and text files, and exports everything into a single, structured plain-text file.
 
 Instead of manually opening dozens of files to share a codebase with an AI assistant, researcher, teammate, or reviewer, run one command and generate a project dump.
