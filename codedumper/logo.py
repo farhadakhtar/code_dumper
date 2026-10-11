@@ -299,10 +299,48 @@ def png_info(data: bytes) -> Dict[str, object]:
 
 _TRUECOLOR_TERMS = {
     "xterm-kitty", "alacritty", "foot", "wezterm", "kitty",
+    "xterm-direct", "mintty", "cygwin", "contour", "rio",
 }
 _TRUECOLOR_TERM_PROGRAMS = {
     "vscode", "WezTerm", "ghostty", "iTerm.app", "Warp", "Hyper",
+    "WindowsTerminal", "Tabby",
 }
+
+
+def _stream_is_tty(stream) -> bool:
+    try:
+        return bool(stream.isatty())
+    except (AttributeError, ValueError, OSError):
+        return False
+
+
+def _check_indicators(env) -> Tuple[bool, str, str]:
+    """Evaluate environment indicators.
+
+    Returns ``(ok, reason, detail)`` where ``reason`` is ``""`` when true-color
+    output is indicated, otherwise a stable fallback-reason code.
+    """
+    if env.get("NO_COLOR"):
+        return False, "no-color", "NO_COLOR is set"
+    term = (env.get("TERM") or "").lower()
+    if term in ("dumb", "unknown"):
+        return False, "dumb-terminal", f"TERM={env.get('TERM')!r}"
+    if env.get("WT_SESSION"):
+        return True, "", "WT_SESSION (Windows Terminal)"
+    if env.get("WT_PROFILE"):
+        return True, "", "WT_PROFILE (Windows Terminal)"
+    if (env.get("ConEmuANSI") or "").upper() == "ON":
+        return True, "", "ConEmuANSI=ON (ConEmu/Cmder)"
+    if (env.get("COLORTERM") or "").lower() in ("truecolor", "24bit"):
+        return True, "", f"COLORTERM={env.get('COLORTERM')!r}"
+    program = env.get("TERM_PROGRAM") or ""
+    if program in _TRUECOLOR_TERM_PROGRAMS:
+        return True, "", f"TERM_PROGRAM={program!r}"
+    if term in _TRUECOLOR_TERMS:
+        return True, "", f"TERM={env.get('TERM')!r}"
+    inspected = ("WT_SESSION/WT_PROFILE/COLORTERM/TERM_PROGRAM unset; "
+                 f"TERM={env.get('TERM')!r}")
+    return False, "no-truecolor-indicators", inspected
 
 
 def terminal_supports_truecolor(stream=None, env=None) -> bool:
@@ -311,31 +349,17 @@ def terminal_supports_truecolor(stream=None, env=None) -> bool:
     Conservative on purpose: legacy conhost (classic PowerShell/CMD),
     pipes, ``NO_COLOR``, and ``dumb`` terminals all report ``False`` and
     get the plain menu fallback. ``stream``/``env`` are injectable for
-    tests.
+    tests. Use :func:`diagnose_launch_logo` to learn *why* a session
+    falls back.
     """
     if env is None:
         env = os.environ
     if stream is None:
         stream = sys.stdout
-    try:
-        if not stream.isatty():
-            return False
-    except (AttributeError, ValueError, OSError):
+    if not _stream_is_tty(stream):
         return False
-    if env.get("NO_COLOR"):
-        return False
-    term = (env.get("TERM") or "").lower()
-    if term in ("dumb", "unknown"):
-        return False
-    if env.get("WT_SESSION"):
-        return True  # Windows Terminal
-    if (env.get("COLORTERM") or "").lower() in ("truecolor", "24bit"):
-        return True
-    if env.get("TERM_PROGRAM") in _TRUECOLOR_TERM_PROGRAMS:
-        return True
-    if term in _TRUECOLOR_TERMS:
-        return True
-    return False
+    ok, _, _ = _check_indicators(env)
+    return ok
 
 
 def terminal_width(default: int = 80, env=None) -> int:
