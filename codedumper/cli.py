@@ -2,46 +2,51 @@
 
 Implements the README contract:
 
-- Bare ``codedumper`` launches the interactive ``CODEDUMPER CLI`` menu.
+- Bare ``codedumper`` launches the interactive menu (dump, update dump,
+  GitHub, self-update check, exit).
 - ``codedumper dump [PATH] [OPTIONS]`` is the primary non-interactive form.
 - ``codedumper [PATH] [OPTIONS]`` (legacy direct form) keeps working.
+- Default output is plain text (``.txt``); ``--format markdown`` opts in
+  to the Markdown rendering.
 """
 
 import argparse
 import re
 import signal
 import sys
+import webbrowser
 from pathlib import Path
 from typing import List, Optional
 
 import codedumper
 from codedumper.models import ScanConfig
-from codedumper.renderer import iter_markdown_parts
+from codedumper.renderer import iter_markdown_parts, iter_text_parts
 from codedumper.reporter import format_cli_summary
 from codedumper.scanner import scan_repository
+from codedumper.updater import GITHUB_REPO_URL, run_update_interactive
 from codedumper.writer import write_dump_stream
 
 
-BANNER = r"""
-   ____          _      ____
-  / ___|___   __| | ___|  _ \ _   _ _ __ ___  _ __   ___ _ __
- | |   / _ \ / _` |/ _ \ | | | | | | '_ ` _ \| '_ \ / _ \ '__|
- | |__| (_) | (_| |  __/ |_| | |_| | | | | | | |_) |  __/ |
-  \____\___/ \__,_|\___|____/ \__,_|_| |_| |_| .__/ \___|_|
-                                             |_|
+BANNER = """\
+====================================
+          CODEDUMPER
+====================================
 
-                  CODEDUMPER CLI
-          Turn your codebase into Markdown.
+What would you like to do?
 
-  1. Dump the current project
-  2. Dump another project
-  3. Preview project contents
-  4. Configure exclusions
-  5. Help and documentation
-  6. Exit
+  1. Get a code dump
+  2. Update the code dump
+  3. See GitHub
+  4. Check for updates and install
+  5. Exit
 """
 
-MENU_PROMPT = "Select an option [1-6]: "
+MENU_PROMPT = "Select an option [1-5]: "
+
+FORMAT_TEXT = "text"
+FORMAT_MARKDOWN = "markdown"
+FORMAT_CHOICES = (FORMAT_TEXT, FORMAT_MARKDOWN)
+FORMAT_EXTENSIONS = {FORMAT_TEXT: "txt", FORMAT_MARKDOWN: "md"}
 
 
 def parse_size_str(val: str) -> int:
@@ -73,7 +78,7 @@ def _add_dump_options(parser: argparse.ArgumentParser) -> None:
         "--output",
         dest="output_path",
         default=None,
-        help="Destination filepath for the generated Markdown dump. (Default: <project_directory_name>.md)",
+        help="Destination filepath for the generated dump. (Default: <project_directory_name>.txt outside the scanned project)",
     )
     parser.add_argument(
         "-f",
@@ -104,7 +109,13 @@ def _add_dump_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--no-tree",
         action="store_true",
-        help="Suppress the Project Structure tree section in the generated Markdown output.",
+        help="Suppress the project structure section in the generated dump.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=FORMAT_CHOICES,
+        default=FORMAT_TEXT,
+        help="Output format: plain text '.txt' (default) or Markdown '.md'.",
     )
     parser.add_argument(
         "--dry-run",
