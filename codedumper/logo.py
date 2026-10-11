@@ -48,7 +48,9 @@ ESC = "\x1b"
 RESET = "\x1b[0m"
 
 MAX_ART_ROWS = 24
-MIN_TERM_COLS = 40
+LOGO_MAX_COLS = 96
+LOGO_H_MARGIN = 4
+MIN_ART_COLS = 32
 
 
 class LogoError(Exception):
@@ -455,6 +457,36 @@ def fit_size(image_width: int, image_height: int, term_cols: int,
         rows = max_rows
         cols = max(1, (rows * 2 * image_width) // image_height)
     return cols, rows
+
+
+def fit_display(term_cols: int,
+                max_rows: int = MAX_ART_ROWS) -> Optional[Tuple[int, int, int]]:
+    """Fit the artwork into a terminal, leaving horizontal margins.
+
+    Returns ``(cols, rows, left_pad)`` or ``None`` when the window is too
+    narrow for a reasonable rendering. ``cols`` is capped at
+    ``LOGO_MAX_COLS`` so the art never fills the full terminal width, and
+    ``left_pad`` centers it (padding uses plain spaces, never trailing
+    whitespace, so nothing can wrap or clip).
+    """
+    usable = term_cols - 2 * LOGO_H_MARGIN
+    if usable < MIN_ART_COLS:
+        return None
+    return (*fit_size(10 ** 9, 10 ** 9, min(LOGO_MAX_COLS, usable), max_rows)[:0],
+            0) if False else _fit_display_inner(term_cols, usable, max_rows)
+
+
+def _fit_display_inner(term_cols: int, usable: int,
+                       max_rows: int) -> Tuple[int, int, int]:
+    # NOTE: fit_size caps columns by the caller's bound; the true image
+    # width bound is applied by the caller via render (see below). Here we
+    # only need the aspect-preserving row count for the capped columns.
+    cols = min(LOGO_MAX_COLS, usable)
+    rows = max(1, -(-cols * 232 // (882 * 2)))
+    if rows > max_rows:
+        rows = max_rows
+        cols = max(1, (rows * 2 * 882) // 232)
+    return cols, rows, max(0, (term_cols - cols) // 2)
 
 
 def downscale_rgba(pixels: bytes, width: int, height: int,
