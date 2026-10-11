@@ -294,7 +294,7 @@ def test_menu_banner(capsys):
 
 
 def test_menu_invalid_choice_reprompts(capsys):
-    with patch("builtins.input", side_effect=["banana", "5"]):
+    with patch("builtins.input", side_effect=["banana", "6"]):
         assert run_interactive_menu() == 0
     assert "Invalid choice" in capsys.readouterr().out
 
@@ -314,7 +314,7 @@ def test_menu_get_dump_creates_txt_outside_project(tmp_path: Path, monkeypatch):
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["1", "", "5"]):
+    with patch("builtins.input", side_effect=["1", "", "6"]):
         assert run_interactive_menu() == 0
     out = tmp_path / "menudump.txt"
     assert out.exists()
@@ -333,10 +333,52 @@ def test_menu_get_dump_custom_path_with_spaces(tmp_path: Path, monkeypatch):
     (proj / "a.py").write_text("x = 1\n", encoding="utf-8")
     monkeypatch.chdir(proj)
     custom = tmp_path / "custom out" / "dump result.txt"
-    with patch("builtins.input", side_effect=["1", str(custom), "5"]):
+    with patch("builtins.input", side_effect=["1", str(custom), "6"]):
         assert run_interactive_menu() == 0
     assert custom.exists()
     assert "FILE: a.py" in custom.read_text(encoding="utf-8")
+
+
+def test_menu_dump_another_project(tmp_path: Path, monkeypatch, capsys):
+    other = tmp_path / "other proj"
+    (other / "src").mkdir(parents=True)
+    (other / "src" / "app.py").write_text("print('other')\n", encoding="utf-8")
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.chdir(home)
+    with patch("builtins.input", side_effect=["2", str(other), "", "6"]):
+        assert run_interactive_menu() == 0
+    out = home / "other proj.txt"
+    assert out.exists()
+    assert "CODEBASE DUMP: other proj" in out.read_text(encoding="utf-8")
+    assert "FILE: src/app.py" in out.read_text(encoding="utf-8")
+
+
+def test_menu_dump_another_empty_path_returns(tmp_path: Path, monkeypatch, capsys):
+    home = tmp_path / "home2"
+    home.mkdir()
+    monkeypatch.chdir(home)
+    with patch("builtins.input", side_effect=["2", "", "6"]):
+        assert run_interactive_menu() == 0
+    assert "No path entered" in capsys.readouterr().out
+
+
+def test_menu_preview_writes_nothing(tmp_path: Path, monkeypatch, capsys):
+    proj = tmp_path / "previewproj"
+    proj.mkdir()
+    (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    with patch("builtins.input", side_effect=["3", "6"]):
+        assert run_interactive_menu() == 0
+    assert not (proj / "previewproj.txt").exists()
+    assert not (tmp_path / "previewproj.txt").exists()
+    assert "Files discovered:" in capsys.readouterr().out
+
+
+def test_menu_help_prints_usage(capsys):
+    with patch("builtins.input", side_effect=["5", "6"]):
+        assert run_interactive_menu() == 0
+    assert "usage:" in capsys.readouterr().out.lower()
 
 
 def test_menu_update_existing_dump_with_confirmation(tmp_path: Path, monkeypatch):
