@@ -28,7 +28,7 @@ project-name.txt
 - **Organized file sections:** Each file receives its own `FILE:` section with metadata.
 - **Automatic project naming:** Generate `my-project.txt` from the selected project directory.
 - **Beginner-friendly menu:** Run `codedumper` with no arguments for a guided menu.
-- **Self-update check:** Compare your installed version against official GitHub releases.
+- **Self-update module:** Compare the installed version against official GitHub releases.
 - **Smart exclusions:** Skip common virtual environments, dependency directories, build artifacts, caches, and version-control internals.
 - **Sensitive-file protection:** Exclude common secrets and credential files by default.
 - **Binary-file detection:** Avoid dumping images, executables, and other unsuitable binary content.
@@ -430,16 +430,15 @@ Tests must run against temporary test projects and must not expose real credenti
 
 ## Updating CodeDumper
 
-Choose option 4 (**Check for updates and install**) in the interactive menu.
-The updater compares your installed version against official stable GitHub
-releases of `farhadakhtar/code_dumper` (prereleases are never offered):
+The `codedumper.updater` module compares the installed version against
+official stable GitHub releases of `farhadakhtar/code_dumper`
+(prereleases are never offered):
 
-- **Up to date:** it says so and returns to the menu. Nothing changes.
-- **Update available:** it shows the new version and asks for explicit
+- **Up to date:** it reports that; nothing changes.
+- **Update available:** it shows the new version and requires explicit
   confirmation first. On confirmation it downloads the verified release
   wheel, installs it with pip, and re-reads the installed version — success
-  is reported only when the versions match. Declining returns to the menu
-  without changes.
+  is reported only when the versions match. Declining makes no changes.
 - **No releases published yet:** automatic updating is honestly reported as
   not configured, with a safe manual route (`git pull` + reinstall, or
   install a future release wheel) instead of a fabricated download.
@@ -457,7 +456,7 @@ works fully offline — the updater is a separate module.
 ### Version 1.1 — Plain-text default, guided menu, update check
 
 - Plain-text (`.txt`) dump format by default; Markdown via `--format`.
-- Beginner-friendly interactive menu (dump, update, GitHub, update check).
+- Beginner-friendly interactive menu (spec launch screen).
 - Safe self-update check against official GitHub releases.
 - Dumps default to outside the scanned project.
 
