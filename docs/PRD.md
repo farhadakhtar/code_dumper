@@ -6,11 +6,10 @@
 **Source of Truth:** `README.md` + working implementation (v1.1.0)
 **File:** `docs/PRD.md`
 
-*v2.1.0 changes: beginner menu (options 1–5), plain-text (`.txt`) default
-output contract, `--format markdown` opt-in, outside-project default
-location with output self-exclusion, update-dump flow, GitHub opener, and
-a real self-update check against official GitHub releases (honest
-unavailable state while no release is published).*
+*v2.1.0 changes: specified menu (options 1–7) with image-backed launch
+art, plain-text (`.txt`) default output contract, `--format markdown`
+opt-in, outside-project default location with output self-exclusion,
+update-dump flow, and updater module with honest unavailable state.*
 
 ---
 
@@ -82,17 +81,18 @@ are real scan results; nothing is fabricated.
 
 ### 2.2 Key Workflows
 
-- **W-1 Get a dump (menu):** User runs `codedumper` in a project, picks `1`,
-  accepts (or overrides) the default `<name>.txt` path outside the project,
-  receives the file plus a real-counts summary.
-- **W-2 Update a dump (menu):** User picks `2`; the tool finds the project's
-  `.txt` dump, confirms, and regenerates it atomically. Missing dump →
-  offer to create; legacy `.md` → left untouched with an explanatory note.
-- **W-3 Open GitHub (menu):** Option `3` opens the official repository in
-  the default browser, or prints a helpful error.
-- **W-4 Update check (menu):** Option `4` shows installed vs latest stable
-  versions; up-to-date → report; available → confirm → install → verify;
-  no releases → honest unavailable state + manual route.
+- **W-1 Get a dump (menu `1`):** User runs `codedumper` in a project (logo
+  launch), picks `1`, accepts (or overrides) the default `<name>.txt` path
+  outside the project, receives the file plus a real-counts summary.
+- **W-2 Dump another (menu `2`):** User picks `2`, enters a project path,
+  and gets its dump the same way.
+- **W-3 Preview (menu `3`):** Dry-run scan of the current directory with
+  real counts; nothing is written.
+- **W-4 Update a dump (menu `4`):** The tool finds the project's `.txt`
+  dump, confirms, and regenerates it atomically. Missing dump → offer to
+  create; legacy `.md` → left untouched with an explanatory note.
+- **W-5 Session exclusions (menu `5`):** Extra glob patterns apply to dumps
+  in the same session.
 - **W-5 Direct dump:** `codedumper dump ./my-project` writes
   `my-project.txt` outside the target.
 - **W-6 Custom output:** `codedumper dump ./my-project --output ./exports/codebase.txt`.
