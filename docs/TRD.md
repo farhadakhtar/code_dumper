@@ -254,7 +254,7 @@ box; environmental, not gated); ~50 MB text under 100 MB tracemalloc peak
 
 | TR | PRD | Design home |
 |---|---|---|
-| TR-001 | FR-001 | `cli.py` menu loop (1–5) |
+| TR-001 | FR-001 | `cli.py` menu loop (1–7) + `logo.py` launch art |
 | TR-002 | FR-002/FR-020 | `cli.py` `dump` subparser + legacy path |
 | TR-003 | FR-003/FR-004 | `scanner.py` sorted recursion |
 | TR-004 | FR-005 | `tree.py` |
