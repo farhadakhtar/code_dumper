@@ -278,18 +278,23 @@ def test_menu_matches_exact_spec(capsys):
         assert run_interactive_menu() == 0
     out = capsys.readouterr().out
     assert out == BANNER + "\nGoodbye!\n"
-    # Spot-check the unusual numbering and spacing verbatim.
-    assert "                 CODEDUMPER CLI\n" in out
+    # Spot-check line breaks, spacing, labels, and numbering verbatim:
+    # flush-left heading, one blank after it, exact subtitle indent,
+    # options on consecutive lines with no blanks between them.
+    assert out.startswith("CODEDUMPER CLI\n\n")
     assert "         Turn your codebase into Markdown.\n" in out
-    assert "\n 3. Preview project contents\n 4. Update\n" in out
-    assert "\n 5. Configure exclusions\n" in out
-    assert "\n 6. Help and documentation\n" in out
-    assert "\n 7. Exit\n" in out
+    assert (" 1. Dump the current project\n"
+            " 2. Dump another project\n"
+            " 3. Preview project contents\n"
+            " 4. Update\n"
+            " 5. Configure exclusions\n"
+            " 6. Help and documentation\n"
+            " 7. Exit\n") in out
     # PowerShell/CMD-safe: menu output must be pure ASCII.
     out.encode("ascii")
     # The prompt itself is passed to input(), not printed (mocked input
     # never echoes it), so verify the constant directly.
-    assert MENU_PROMPT == " Select an option [1-7]: "
+    assert MENU_PROMPT == "Select an option [1-7]: "
 
 
 def test_menu_banner(capsys):
