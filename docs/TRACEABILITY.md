@@ -12,7 +12,7 @@
 
 | Requirement ID | PRD Source | TRD Source | DRD Module / Section | ERD Reference | Test ID(s) | Status |
 |---|---|---|---|---|---|---|
-| FR-001 | PRD §3 | TR-001 | `cli.py` menu 1–5 (§3.7) | `ScanSession.invocation_mode` | `test_menu_*`, `test_bare_main_launches_menu` | Verified (contract + ux suites) |
+| FR-001 | PRD §3 | TR-001/TR-022 | `cli.py` menu 1–7 (§3.7) + `logo.py` launch art | `ScanSession.invocation_mode` | `test_menu_*`, `test_bare_main_launches_menu`, `tests/test_logo.py` | Verified (contract + ux + logo suites) |
 | FR-002 | PRD §3 | TR-002 | `cli.py` `dump` subparser | `ScanSession` | `test_dump_subcommand_*` | Verified |
 | FR-003 | PRD §3 | TR-003 | `scanner.py` | `DirectoryEntry`, `FileEntry` | `test_scan_repository_comprehensive`, `test_empty_project` | Verified |
 | FR-004 | PRD §3 | TR-003 | `scanner.py` + `tree.py` | `ScanSession` ordering | `test_scan_determinism`, SHA-256 + byte-identity tests | Verified |
