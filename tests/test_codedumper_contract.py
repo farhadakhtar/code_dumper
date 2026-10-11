@@ -395,6 +395,33 @@ def test_menu_help_prints_usage(capsys):
     assert "usage:" in capsys.readouterr().out.lower()
 
 
+def test_menu_configure_exclusions_applies_to_dump(tmp_path: Path, monkeypatch, capsys):
+    proj = tmp_path / "exclproj"
+    proj.mkdir()
+    (proj / "keep.py").write_text("print(1)\n", encoding="utf-8")
+    (proj / "skip.log").write_text("noise\n", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    with patch("builtins.input", side_effect=["5", "*.log", "1", "", "7"]):
+        assert run_interactive_menu() == 0
+    out = tmp_path / "exclproj.txt"
+    assert out.exists()
+    text = out.read_text(encoding="utf-8")
+    assert "FILE: keep.py" in text
+    assert "FILE: skip.log" not in text
+    assert "USER_EXCLUDE_PATTERN" in text
+    assert "1 exclusion pattern" in capsys.readouterr().out
+
+
+def test_menu_configure_exclusions_empty_keeps_session(tmp_path: Path, monkeypatch, capsys):
+    proj = tmp_path / "noexcl"
+    proj.mkdir()
+    (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    with patch("builtins.input", side_effect=["5", "", "7"]):
+        assert run_interactive_menu() == 0
+    assert "unchanged" in capsys.readouterr().out
+
+
 def test_menu_update_existing_dump_with_confirmation(tmp_path: Path, monkeypatch):
     proj = tmp_path / "updproj"
     proj.mkdir()
