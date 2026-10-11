@@ -90,14 +90,18 @@ codedumper
 ## The CLI experience
 
 Type `codedumper` in any project directory to open the interactive menu.
-On a true-color terminal (e.g. Windows Terminal) the launch shows the
-official CodeDumper logo rendered from the bundled `logo.png` artwork —
-centered, capped at a readable width with margins, aspect-preserved —
-followed by the installed version, the tagline, and the menu. The
-baked-in tagline dissolves at terminal resolution, so it is repeated once
-as crisp text (identical wording); the artwork itself is never redrawn:
+The launch shows a fixed green `CODE DUMPER` wordmark in outlined,
+segmented block lettering, followed by the installed version, the
+tagline, and the menu:
 
 ```text
+ ██████╗  ███████╗ ██████╗  ███████╗      ██████╗  ██╗   ██╗ ███╗   ███╗ ██████╗  ███████╗ ██████╗
+██╔════╝ ██╔═══██╗ ██╔══██╗ ██╔════╝      ██╔══██╗ ██║   ██║ ████╗ ████║ ██╔══██╗ ██╔════╝ ██╔══██╗
+██║      ██║   ██║ ██║  ██║ █████╗        ██║  ██║ ██║   ██║ ██╔████╔██║ ██████╔╝ █████╗   ██████╔╝
+██║      ██║   ██║ ██║  ██║ ██╔══╝        ██║  ██║ ██║   ██║ ██║╚██╔╝██║ ██╔═══╝  ██╔══╝   ██╔══██╗
+╚██████╗ ╚██████╔╝ ██████╔╝ ███████╗      ██████╔╝ ╚██████╔╝ ██║ ╚═╝ ██║ ██║      ███████╗ ██║  ██║
+ ╚═════╝  ╚═════╝  ╚═════╝  ╚══════╝      ╚═════╝   ╚═════╝  ╚═╝     ╚═╝ ╚═╝      ╚══════╝ ╚═╝  ╚═╝
+
                                      v1.1.0
 
                 Turn your codebase into a clean, AI-ready dump.
@@ -111,26 +115,11 @@ as crisp text (identical wording); the artwork itself is never redrawn:
  7. Exit
 ```
 
-(Centering adapts to the actual terminal width; the options block itself
-is fixed.)
-
-Terminals without true-color support (classic conhost, pipes,
-`NO_COLOR`, `dumb` terminals, very narrow windows) skip the artwork and
-show the same version line and menu instead — never a fake replacement
-logo.
-
-> Troubleshooting a missing logo: run with `CODEDUMPER_LOGO_DEBUG=1`
-> (e.g. `$env:CODEDUMPER_LOGO_DEBUG=1; codedumper`) to print the exact
-> fallback reason (`not-a-tty`, `no-color`, `dumb-terminal`,
-> `no-truecolor-indicators`, `windows-vt-unavailable`, `narrow-window`,
-> `asset-missing`, `decode-failed`, `encoding`, `write-failed`) to stderr.
-> Note: `$env:` assignments persist for the whole PowerShell session, so
-> remove it afterwards with `Remove-Item Env:\CODEDUMPER_LOGO_DEBUG` —
-> otherwise the diagnostic line keeps appearing on every launch.
-> On Windows, an interactive console with virtual-terminal processing
-> renders the logo even when no environment indicator is set; a common
-> remaining cause is a non-UTF-8 console code page — run `chcp 65001`
-> and retry.
+The wordmark is a fixed terminal string (bold green with a style reset;
+`NO_COLOR` or `dumb` terminals and piped output get the identical block
+without color). Terminals narrower than the block skip it and show the
+same version line and menu instead — never a wrapped or substituted
+logo. The dynamic version line always reflects the installed package.
 
 - **1. Dump the current project:** scans the current directory and writes
   `<project-name>.txt` next to the project (outside it, so later scans
