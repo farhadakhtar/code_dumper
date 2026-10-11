@@ -234,6 +234,7 @@ no real secrets.
 Launch-logo gates (`tests/test_logo.py`): bundled asset provenance (hash),
 real-pixel content, decoder edge cases (all color types, bad input),
 capability matrix (tty/`NO_COLOR`/`TERM`/Windows Terminal/ConEmu/mintty),
+Windows console VT probing (pure decision logic + fake-handle tests),
 aspect fit and narrow-window behavior, missing/invalid asset and
 unwritable-stream safety, reason-coded fallback diagnosis for every cause,
 opt-in debug output, encoding precheck/reconfigure paths, dynamic version

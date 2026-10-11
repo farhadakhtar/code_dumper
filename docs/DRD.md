@@ -216,18 +216,25 @@ def logo_asset_path() -> Path | None: ...        # importlib.resources + source 
 def logo_asset_bytes(asset=None) -> bytes | None: ...  # resources byte access (zip-safe)
 def decode_png_rgba(data: bytes) -> tuple: ...   # stdlib 8-bit decoder (types 0/2/4/6)
 def terminal_supports_truecolor(stream, env) -> bool: ...  # conservative gate
+def _query_console_vt(get_mode, set_mode) -> tuple: ...  # pure VT decision logic
+def _windows_console_vt(stream) -> tuple: ...  # Win32 VT probe (unknown off-Windows)
 def diagnose_launch_logo(stream, env, width) -> LaunchDiagnosis: ...  # reason-coded outcome
 def print_launch_logo(stream, width, env) -> bool: ...     # never raises; debug env gated
 ```
 
 Launch shows the rendered artwork plus a dynamic `v<installed>` line, then
 the options block. Pipes, `NO_COLOR`, `dumb` terminals, missing truecolor
-indicators, legacy consoles, missing/corrupt assets, unencodable output,
-and narrow windows (<40 cols) all fall back to the plain version + menu
-with no fake replacement logo. Every fallback carries a stable reason
-(`not-a-tty`, `no-color`, `dumb-terminal`, `no-truecolor-indicators`,
-`narrow-window`, `asset-missing`, `decode-failed`, `encoding`,
-`write-failed`); `CODEDUMPER_LOGO_DEBUG=1` prints it to stderr.
+indicators on non-Windows consoles, legacy consoles, missing/corrupt
+assets, unencodable output, and narrow windows (<40 cols) all fall back to
+the plain version + menu with no fake replacement logo. On Windows, an
+interactive console with virtual-terminal processing (already enabled, or
+enabled on demand via the console API) renders the art even when no
+environment indicator is set; consoles where VT is unavailable fall back
+with reason `windows-vt-unavailable`. Every fallback carries a stable
+reason (`not-a-tty`, `no-color`, `dumb-terminal`,
+`no-truecolor-indicators`, `windows-vt-unavailable`, `narrow-window`,
+`asset-missing`, `decode-failed`, `encoding`, `write-failed`);
+`CODEDUMPER_LOGO_DEBUG=1` prints it to stderr.
 
 ### 3.8 Suggested-module mapping (README §"Technical design")
 
