@@ -507,7 +507,7 @@ def test_menu_open_github_failure(monkeypatch, capsys):
 
 
 def test_bare_main_launches_menu(monkeypatch):
-    with patch("builtins.input", side_effect=["6"]) as mock_input:
+    with patch("builtins.input", side_effect=["7"]) as mock_input:
         assert main([]) == 0
     mock_input.assert_called_once()
 
