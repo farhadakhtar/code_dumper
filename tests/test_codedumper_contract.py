@@ -298,6 +298,9 @@ def test_menu_matches_exact_spec(monkeypatch, capsys):
     # Hybrid, not duplicated: the tagline text appears exactly once
     # (the baked-in glyphs are pixels, not text).
     assert out.count("AI-ready") == 1
+    # Narrow fallback: 80 columns cannot fit the fixed wordmark, so the
+    # menu shows without it (no wrapping, no substitution).
+    assert "██████" not in out
     # No plain-text replacement heading.
     assert "CODEDUMPER CLI" not in out
     # PowerShell/CMD-safe: fallback menu output must be pure ASCII.
