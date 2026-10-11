@@ -547,14 +547,33 @@ def _stream_encoding(stream) -> Optional[str]:
         return None
 
 
-def _ensure_block_encodable(stream) -> Tuple[bool, str]:
+def _ensure_block_encodable(stream, allow_reconfigure: bool = True) -> Tuple[bool, str]:
     """Make sure ``▄`` can be written to ``stream``.
 
-    Tries (in order): the stream's own encoding, reconfiguring it to
-    UTF-8, and — when the encoding is unknown — an optimistic proceed
+    Tries (in order): the stream's own encoding; reconfiguring it to UTF-8
+    (only when ``allow_reconfigure`` — the reconfigure is safe on modern
+    terminals but could mojibake a legacy console, so the Windows-VT path
+    forbids it); and — when the encoding is unknown — an optimistic proceed
     (the guarded write below still converts failures into a fallback).
     Returns ``(ok, detail)``.
     """
+    encoding = _stream_encoding(stream)
+    if encoding is not None:
+        try:
+            HALF_BLOCK.encode(encoding, errors="strict")
+            return True, ""
+        except (LookupError, UnicodeEncodeError, TypeError):
+            pass
+    reconfig = getattr(stream, "reconfigure", None)
+    if allow_reconfigure and callable(reconfig):
+        try:
+            reconfig(encoding="utf-8")
+            return True, "reconfigured-output-to-utf-8"
+        except Exception as exc:
+            return False, f"reconfigure-failed: {exc}"
+    if encoding is None:
+        return True, "encoding-unknown-assumed-utf-8"
+    return False, f"encoding-cannot-represent-block:{encoding}"
     encoding = _stream_encoding(stream)
     if encoding is not None:
         try:
@@ -581,10 +600,17 @@ def diagnose_launch_logo(stream=None, env=None,
     Never raises and never prints: returns :class:`LaunchDiagnosis` with
     ``shown`` plus a stable ``reason`` (``shown`` / ``not-a-tty`` /
     ``no-color`` / ``dumb-terminal`` / ``no-truecolor-indicators`` /
-    ``narrow-window`` / ``asset-missing`` / ``decode-failed`` /
-    ``render-failed`` / ``encoding`` / ``write-failed``) and a human
-    ``detail`` string. Powers both the silent normal path and the
-    opt-in ``CODEDUMPER_LOGO_DEBUG`` diagnostic.
+    ``windows-vt-unavailable`` / ``narrow-window`` / ``asset-missing`` /
+    ``decode-failed`` / ``render-failed`` / ``encoding`` / ``write-failed``)
+    and a human ``detail`` string. Powers both the silent normal path and
+    the opt-in ``CODEDUMPER_LOGO_DEBUG`` diagnostic.
+
+    On Windows, a missing environment indicator is not the final word: an
+    interactive console with virtual-terminal processing (already enabled,
+    or enabled on demand) is treated as supported, since that is exactly
+    what lets the escapes render. Consoles where VT processing is
+    unavailable keep the plain fallback with reason
+    ``windows-vt-unavailable``.
     """
     import sys as _sys
     out = stream if stream is not None else _sys.stdout
@@ -596,10 +622,19 @@ def diagnose_launch_logo(stream=None, env=None,
         if not _stream_is_tty(out):
             return LaunchDiagnosis(False, "not-a-tty",
                                    "stdout is piped, redirected, or closed")
-        _, reason, detail = _check_indicators(environment)
-        if not reason:  # defensive: gate failed for an unclear cause
-            reason, detail = "no-truecolor-indicators", "indicators unclear"
-        return LaunchDiagnosis(False, reason, detail)
+        vt, vt_detail = _windows_console_vt(out)
+        if vt in ("enabled", "enabled-on-demand"):
+            via_indicators = False
+            supported_detail = vt_detail
+        elif vt == "unavailable":
+            return LaunchDiagnosis(False, "windows-vt-unavailable", vt_detail)
+        else:
+            _, reason, detail = _check_indicators(environment)
+            if not reason:  # defensive: gate failed for an unclear cause
+                reason, detail = "no-truecolor-indicators", "indicators unclear"
+            return LaunchDiagnosis(False, reason, detail)
+    else:
+        via_indicators = True
 
     cols = width if width is not None else terminal_width()
     if cols < MIN_TERM_COLS:
