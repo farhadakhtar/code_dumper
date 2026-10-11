@@ -122,9 +122,9 @@ fabricated.
 
 | Requirement ID | Category | Requirement | Acceptance Criteria |
 |---|---|---|---|
-| **NFR-001** | Performance | Fast scanning/export. | 1,000-file project (<50 MB text) completes in under 2.0 s on standard SSD hardware. |
-| **NFR-002** | Memory efficiency | Bounded memory footprint. | Peak RAM under 100 MB for up to 500 MB of total text; per-file cap enforced by FR-009. |
-| **NFR-003** | Portability | Windows, Linux, macOS on Python 3.10+. | POSIX-normalized (`/`) relative paths in output; `\n` line endings; verified on 3.10/3.11/3.12. |
+| **NFR-001** | Performance | Fast scanning/export. | 1,000-file project (<50 MB text) completes in under 2.0 s on standard SSD hardware. Verified by `tests/test_performance.py`. |
+| **NFR-002** | Memory efficiency | Bounded memory footprint. | Peak allocation under 100 MB for up to 500 MB of total text; per-file cap enforced by FR-009. Verified by `tests/test_performance.py` (tracemalloc peak). |
+| **NFR-003** | Portability | Windows, Linux, macOS on Python 3.10+. | POSIX-normalized (`/`) relative paths in output; `\n` line endings; verified on 3.10/3.11/3.12. Install verified in a clean virtualenv from a wheel; CLI runs from any working directory; `python -m codedumper` is the documented PATH workaround. |
 | **NFR-004** | Security & privacy | Safe defaults, offline only. | No network transmission; symlinks never followed; source tree read-only; filename-only exclusion reporting; secret-content disclaimer in docs. |
 | **NFR-005** | Reliability | No partial/corrupt outputs; no source mutation. | Atomic temp-file write + `os.replace`; source checksums identical before/after. |
 | **NFR-006** | Determinism | Identical file output across runs. | Two runs with identical inputs produce identical SHA-256 of the Markdown file (wall-clock timing is console-only). |
@@ -237,3 +237,9 @@ code transformation, relational-database persistence.
 4. Full pytest suite passes; E2E dry-run + write + overwrite + invalid-arg
    paths verified for both `dump` and legacy forms.
 5. `LICENSE` present; `pip install -e .` works on Python 3.10+.
+6. Wheel builds offline (`pip wheel --no-deps --no-build-isolation`), installs
+   in a clean virtualenv, and the CLI runs from an arbitrary working
+   directory against an unrelated project without touching it.
+7. Stale distribution docs removed (`Readme.pdf` deleted; `README.md` is the
+   single install/usage source with the verified GitHub URL and no
+   unpublished-PyPI claims).

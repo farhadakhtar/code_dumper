@@ -44,9 +44,9 @@ updated in Phase 4.
 
 | ID | Category | TRD | DRD / Section | Verification | Status |
 |---|---|---|---|---|---|
-| NFR-001 | Performance | TR-013 | scanner/renderer | 1,000-file benchmark | Verified (design) |
-| NFR-002 | Memory | TR-013 | renderer/writer | per-file cap + streaming | Verified (design) |
-| NFR-003 | Portability | TR-014 | models/scanner | POSIX/`\n` tests, 3.10–3.12 | Verified (v1 suite) |
+| NFR-001 | Performance | TR-013 | scanner/renderer | `tests/test_performance.py` (1,000 files < 2.0 s) | To verify |
+| NFR-002 | Memory | TR-013 | renderer/writer | `tests/test_performance.py` (tracemalloc peak < 100 MB) | To verify |
+| NFR-003 | Portability | TR-014 | models/scanner | POSIX/`\n` tests, 3.10–3.12; clean-venv wheel install + arbitrary-cwd run | To verify |
 | NFR-004 | Security | TR-015 | writer/scanner | no-upload, no-follow, read-only, filename-only reports | To verify |
 | NFR-005 | Reliability | TR-015 | scanner/writer | checksums, atomic-write tests | Verified (v1 suite) |
 | NFR-006 | Determinism | TR-016 | scanner/renderer | SHA-256 equality (timing console-only) | To verify |
