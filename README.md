@@ -102,17 +102,16 @@ Type `codedumper` in any project directory to open the interactive menu:
  2. Dump another project
 
  3. Preview project contents
+ 4. Update
 
-4. Update
+ 5. Configure exclusions
 
- 4. Configure exclusions
+ 6. Help and documentation
 
- 5. Help and documentation
-
- 6. Exit
+ 7. Exit
 
 
- Select an option [1-6]:
+ Select an option [1-7]:
 ```
 
 - **1. Dump the current project:** scans the current directory and writes
@@ -126,10 +125,12 @@ Type `codedumper` in any project directory to open the interactive menu:
   with real counts; nothing is written.
 - **4. Update:** regenerates the current project's existing `.txt` dump
   after explicit confirmation (offers to create one when missing; legacy
-  `.md` dumps are left untouched). Custom `--exclude` patterns remain
-  available on direct commands.
-- **5. Help and documentation:** prints the full command help.
-- **6. Exit.**
+  `.md` dumps are left untouched).
+- **5. Configure exclusions:** prompts for extra glob patterns used for
+  dumps in the same session. Custom `--exclude` patterns remain available
+  on direct commands.
+- **6. Help and documentation:** prints the full command help.
+- **7. Exit.**
 
 Invalid choices re-prompt; `Ctrl+C` exits cleanly; closed input exits
 without changes.
@@ -137,7 +138,7 @@ without changes.
 ### Example: dump the current project
 
 ```text
- Select an option [1-6]: 1
+ Select an option [1-7]: 1
 
 Project: my-application
 Default output: D:\Projects\my-application.txt
