@@ -14,8 +14,11 @@
   interpreter was available in this environment, so 3.10 is supported per
   `requires-python` but not executed); CPython.
 - **CLI:** Standard-library `argparse` with a `dump` subcommand + legacy
-  positional form + interactive `input()` menu (options 1–5). *Rationale:*
+  positional form + interactive `input()` menu (options 1–7). *Rationale:*
   zero-dependency, testable, beginner-friendly with scriptable direct forms.
+- **Launch logo:** bundled `logo.png` decoded with stdlib `zlib` + `struct`
+  and rendered as true-color ANSI half-blocks; conservative capability gate
+  with a plain-menu fallback; no imaging dependency.
 - **Filesystem:** `pathlib.Path` + `os.replace` (atomic write), `os.fsync`.
 - **Matching:** `fnmatch` glob engine for `--exclude` patterns.
 - **Binary/encoding:** 8,192-byte sample (null byte → binary; >30% non-text
@@ -39,7 +42,7 @@
 
 - **Runtime:** **0** third-party packages (`pathlib`, `argparse`, `os`,
   `sys`, `dataclasses`, `fnmatch`, `re`, `hashlib`, `tempfile`, `time`,
-  `shutil` for the watcher only).
+  `struct`, `zlib`, `shutil` for the watcher only).
 - **Dev/test:** `pytest>=8.0.0`.
 - **Companion-only:** `watchdog>=4.0.0`, `GitPython>=3.1.40` (for
   `autocommit`, never imported by `codedumper`).
@@ -220,13 +223,20 @@ unreadable files; symlinks/traversal; plain-text contract (no `#`/fences,
 verbatim source, markers); Markdown opt-in + fence escaping; output
 creation/overwrite/invalid args/invalid `--format`; default outside-project
 location; output self-exclusion; **both** `dump` and legacy invocations;
-**interactive menu** paths (`1..5`, invalid choice, EOF, Ctrl+C); update
+**interactive menu** paths (`1..7`, invalid choice, EOF, Ctrl+C); update
 flows (confirm/decline/missing/legacy); GitHub opener success/failure;
 updater states (up-to-date/available/unavailable/prerelease/malformed/
 network/untrusted) and install success/failure — all mocked, never real
 network or installs; determinism via SHA-256 equality; `--max-file-size`
 units + rejection; no project modification by any flow. Temp projects only;
 no real secrets.
+
+Launch-logo gates (`tests/test_logo.py`): bundled asset provenance (hash),
+real-pixel content, decoder edge cases (all color types, bad input),
+capability matrix (tty/`NO_COLOR`/`TERM`/Windows Terminal), aspect fit and
+narrow-window behavior, missing/invalid asset and unwritable-stream safety,
+dynamic version line, no duplicated tagline/heading text, and packaging
+declarations.
 
 Performance/memory gates (NFR-001/002) are enforced by
 `tests/test_performance.py` on the production streaming path
