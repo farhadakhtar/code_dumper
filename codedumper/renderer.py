@@ -27,6 +27,109 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024):.2f} MB"
 
 
+def format_size_plain(size_bytes: int) -> str:
+    """Format bytes in plain words for `.txt` output (no abbreviations)."""
+    if size_bytes == 1:
+        return "1 byte"
+    if size_bytes < 1024:
+        return f"{size_bytes} bytes"
+    return format_size(size_bytes)
+
+
+# Human-friendly language names for `.txt` output. Any tag not listed here
+# is shown as-is.
+DISPLAY_LANGUAGES = {
+    "python": "Python",
+    "javascript": "JavaScript",
+    "jsx": "JSX",
+    "typescript": "TypeScript",
+    "tsx": "TSX",
+    "html": "HTML",
+    "css": "CSS",
+    "scss": "SCSS",
+    "sass": "Sass",
+    "less": "Less",
+    "json": "JSON",
+    "yaml": "YAML",
+    "toml": "TOML",
+    "xml": "XML",
+    "markdown": "Markdown",
+    "rst": "reStructuredText",
+    "c": "C",
+    "cpp": "C++",
+    "csharp": "C#",
+    "go": "Go",
+    "rust": "Rust",
+    "java": "Java",
+    "kotlin": "Kotlin",
+    "swift": "Swift",
+    "ruby": "Ruby",
+    "php": "PHP",
+    "bash": "Shell",
+    "powershell": "PowerShell",
+    "batch": "Batch",
+    "sql": "SQL",
+    "r": "R",
+    "scala": "Scala",
+    "lua": "Lua",
+    "ini": "INI",
+    "graphql": "GraphQL",
+    "protobuf": "Protobuf",
+    "dockerfile": "Dockerfile",
+    "makefile": "Makefile",
+    "cmake": "CMake",
+    "groovy": "Groovy",
+    "text": "Text",
+}
+
+
+def display_language(tag: str) -> str:
+    """Map an internal language tag to a human-friendly display name."""
+    return DISPLAY_LANGUAGES.get(tag, tag or "Text")
+
+
+def iter_text_parts(config: ScanConfig, result: ScanResult):
+    """Yield the plain-text document piece by piece (default `.txt` format).
+
+    No Markdown headings, no code fences: source contents are embedded
+    verbatim between ``FILE:`` / ``END FILE:`` markers. No timestamps are
+    embedded so repeated runs stay byte-for-byte deterministic.
+    """
+    # Title
+    yield f"CODEBASE DUMP: {result.project_name}\n"
+
+    # Project Structure tree (reuses the deterministic tree builder)
+    if result.tree_text and not config.no_tree:
+        yield "PROJECT STRUCTURE\n"
+        yield result.tree_text
+
+    # File contents
+    if result.included_files:
+        for item in result.included_files:
+            yield f"FILE: {item.rel_path}"
+            yield f"Language: {display_language(item.language)}"
+            yield f"Size: {format_size_plain(item.size)}"
+            yield f"Lines: {item.line_count}"
+            yield ""
+            yield item.content
+            yield ""
+            yield f"END FILE: {item.rel_path}\n"
+
+    # Excluded files
+    if result.omitted_files:
+        yield "EXCLUDED FILES\n"
+        yield "The following files and paths were discovered during scanning but excluded from the dump:\n"
+        for omitted in result.omitted_files:
+            size_str = format_size_plain(omitted.size) if omitted.size > 0 else "-"
+            yield f"{omitted.rel_path} | {omitted.reason} | {size_str}"
+        yield ""
+
+
+def render_text(config: ScanConfig, result: ScanResult) -> str:
+    """Render the scan result as a single plain-text document (`.txt`)."""
+    return "\n".join(iter_text_parts(config, result))
+
+
 def iter_markdown_parts(config: ScanConfig, result: ScanResult):
     """Yield the Markdown document piece by piece (single source of truth).
 
