@@ -161,7 +161,8 @@ are real scan results; nothing is fabricated.
 **Story:** As a beginner, I run `codedumper`, pick `1`, accept the default
 path, and get `<project>.txt` next to my project.
 **Acceptance:**
-1. Menu matches the specified launch screen (logo or plain fallback, options `1..7`).
+1. Menu matches the specified launch screen (green wordmark, plain
+   fallback, or narrow skip; options `1..7`).
 2. Output starts with `CODEBASE DUMP: <name>` and contains
    `PROJECT STRUCTURE`, one `FILE:`/`END FILE:` pair per eligible file,
    and no `#`/`##` headings or fences.
