@@ -336,6 +336,19 @@ def test_menu_shows_image_logo_when_capable(monkeypatch, capsys):
     assert "\x1b[0m\nv" in out
 
 
+def test_menu_art_path_stays_silent_without_debug(monkeypatch, capsys):
+    """Even when art renders, stderr stays clean unless debugging."""
+    monkeypatch.setattr("codedumper.logo.terminal_supports_truecolor",
+                        lambda stream=None, env=None: True)
+    monkeypatch.setenv("COLUMNS", "100")
+    monkeypatch.delenv(logo.LOGO_DEBUG_ENV_VAR, raising=False)
+    with patch("builtins.input", side_effect=["7"]):
+        assert run_interactive_menu() == 0
+    captured = capsys.readouterr()
+    assert "\x1b[38;2;" in captured.out
+    assert captured.err == ""
+
+
 def test_menu_invalid_choice_reprompts(capsys):
     with patch("builtins.input", side_effect=["banana", "7"]):
         assert run_interactive_menu() == 0
