@@ -115,12 +115,12 @@ is a validation error → exit `1`.
 **Exit codes:** `0` ok · `1` usage/validation (bad path, bad size, exists
 w/o `--force`) · `2` I/O error · `130` `Ctrl+C`.
 
-**Menu contract:** exact banner + options `1..5` (get dump, update dump,
-open GitHub, update check, exit); option 1 prompts for an output path
-(default accepted on Enter); option 2 confirms before regenerating and
-never touches unrelated files; option 3 opens the browser or errors
-helpfully; option 4 runs the updater flow; `5`/EOF exits `0`; invalid
-choice re-prompts; `KeyboardInterrupt` exits `130`.
+**Menu contract:** image-backed launch (art or plain fallback) + dynamic
+version line + options `1..7` (dump current, dump another, preview, update,
+session exclusions, help, exit); option 1 prompts for an output path
+(default accepted on Enter); option 2 prompts for a project path; option 4
+confirms before regenerating and never touches unrelated files; `7`/EOF
+exits `0`; invalid choice re-prompts; `KeyboardInterrupt` exits `130`.
 
 **Update contract (`codedumper/updater.py`):** source of truth is
 `https://api.github.com/farhadakhtar/code_dumper/releases/latest`

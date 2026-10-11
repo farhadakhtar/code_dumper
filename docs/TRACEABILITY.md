@@ -64,7 +64,7 @@ help-printer) and the default `.md` output; Markdown remains via
 
 ## 3. Cross-Document Consistency (v2.1)
 
-1. CLI vocabulary (menu `1..5`, `dump`, `--output`, `--format`, `--dry-run`,
+1. CLI vocabulary (menu `1..7`, `dump`, `--output`, `--format`, `--dry-run`,
    `--include-hidden`, `--exclude`, `--max-file-size`, `--help`,
    `--version`) identical across README/PRD/TRD/DRD.
 2. Default output identical everywhere: `<name>.txt` outside the scanned
