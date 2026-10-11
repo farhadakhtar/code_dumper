@@ -529,8 +529,10 @@ def diagnose_launch_logo(stream=None, env=None,
     if not _stream_is_tty(out):
         return LaunchDiagnosis(False, "not-a-tty",
                                "stdout is piped, redirected, or closed")
-    ok, reason, detail = _check_indicators(environment)
-    if not ok:
+    if not terminal_supports_truecolor(out, environment):
+        _, reason, detail = _check_indicators(environment)
+        if not reason:  # defensive: gate failed for an unclear cause
+            reason, detail = "no-truecolor-indicators", "indicators unclear"
         return LaunchDiagnosis(False, reason, detail)
 
     cols = width if width is not None else terminal_width()
