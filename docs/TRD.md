@@ -34,6 +34,21 @@
 - **Companion-only:** `watchdog>=4.0.0`, `GitPython>=3.1.40` (for
   `autocommit`, never imported by `codedumper`).
 
+### 1.2 Distribution
+
+- **Build (offline-capable):** `python -m pip wheel . --no-deps
+  --no-build-isolation -w dist/` produces a `py3-none-any` wheel using the
+  local setuptools (verified 78.x). No network access required.
+- **Install verification:** wheel installs in a clean virtualenv
+  (`pip install <wheel>`); entry point `codedumper` plus the
+  `python -m codedumper` fallback are both exercised from outside the repo.
+- **Source of installs:** GitHub `https://github.com/farhadakhtar/code_dumper.git`
+  only. PyPI installation must not be documented as working until a release
+  is published **and** install-verified.
+- **Never** install anything into, or write anything inside, a scanned
+  project: dry-runs write nothing; real dumps default outside the target
+  unless `--output` says otherwise.
+
 ---
 
 ## 2. Supported Platforms & Portability
@@ -163,6 +178,10 @@ symlinks/traversal; fence escaping; output creation/overwrite/invalid args;
 **both** `dump` and legacy invocations; **interactive menu** paths
 (`1..6`, invalid choice, EOF); determinism via SHA-256 equality;
 `--max-file-size` units + rejection. Temp projects only; no real secrets.
+
+Performance/memory gates (NFR-001/002) are enforced by
+`tests/test_performance.py`: a generated 1,000-file fixture must complete
+scan + render + write in under 2.0 s with a tracemalloc peak under 100 MB.
 
 ---
 
