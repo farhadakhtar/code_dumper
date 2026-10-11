@@ -268,30 +268,32 @@ def test_symlink_not_followed(tmp_path: Path):
 # ---------------------------------------------------------------------------
 
 def test_menu_exit_option():
-    with patch("builtins.input", side_effect=["6"]):
+    with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
 
 
 def test_menu_matches_exact_spec(capsys):
     """The launch screen must match the approved specification verbatim."""
-    with patch("builtins.input", side_effect=["6"]):
+    with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
     out = capsys.readouterr().out
     assert out == BANNER + "\nGoodbye!\n"
     # Spot-check the unusual numbering and spacing verbatim.
     assert "                 CODEDUMPER CLI\n" in out
     assert "         Turn your codebase into Markdown.\n" in out
-    assert "\n4. Update\n" in out
-    assert "\n 4. Configure exclusions\n" in out
+    assert "\n 3. Preview project contents\n 4. Update\n" in out
+    assert "\n 5. Configure exclusions\n" in out
+    assert "\n 6. Help and documentation\n" in out
+    assert "\n 7. Exit\n" in out
     # PowerShell/CMD-safe: menu output must be pure ASCII.
     out.encode("ascii")
     # The prompt itself is passed to input(), not printed (mocked input
     # never echoes it), so verify the constant directly.
-    assert MENU_PROMPT == " Select an option [1-6]: "
+    assert MENU_PROMPT == " Select an option [1-7]: "
 
 
 def test_menu_banner(capsys):
-    with patch("builtins.input", side_effect=["6"]):
+    with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
     out = capsys.readouterr().out
     assert "CODEDUMPER CLI" in out
@@ -300,13 +302,13 @@ def test_menu_banner(capsys):
     assert "2. Dump another project" in out
     assert "3. Preview project contents" in out
     assert "4. Update" in out
-    assert "4. Configure exclusions" in out
-    assert "5. Help and documentation" in out
-    assert "6. Exit" in out
+    assert "5. Configure exclusions" in out
+    assert "6. Help and documentation" in out
+    assert "7. Exit" in out
 
 
 def test_menu_invalid_choice_reprompts(capsys):
-    with patch("builtins.input", side_effect=["banana", "6"]):
+    with patch("builtins.input", side_effect=["banana", "7"]):
         assert run_interactive_menu() == 0
     assert "Invalid choice" in capsys.readouterr().out
 
@@ -326,7 +328,7 @@ def test_menu_get_dump_creates_txt_outside_project(tmp_path: Path, monkeypatch):
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["1", "", "6"]):
+    with patch("builtins.input", side_effect=["1", "", "7"]):
         assert run_interactive_menu() == 0
     out = tmp_path / "menudump.txt"
     assert out.exists()
@@ -345,7 +347,7 @@ def test_menu_get_dump_custom_path_with_spaces(tmp_path: Path, monkeypatch):
     (proj / "a.py").write_text("x = 1\n", encoding="utf-8")
     monkeypatch.chdir(proj)
     custom = tmp_path / "custom out" / "dump result.txt"
-    with patch("builtins.input", side_effect=["1", str(custom), "6"]):
+    with patch("builtins.input", side_effect=["1", str(custom), "7"]):
         assert run_interactive_menu() == 0
     assert custom.exists()
     assert "FILE: a.py" in custom.read_text(encoding="utf-8")
@@ -358,7 +360,7 @@ def test_menu_dump_another_project(tmp_path: Path, monkeypatch, capsys):
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.chdir(home)
-    with patch("builtins.input", side_effect=["2", str(other), "", "6"]):
+    with patch("builtins.input", side_effect=["2", str(other), "", "7"]):
         assert run_interactive_menu() == 0
     out = home / "other proj.txt"
     assert out.exists()
@@ -370,7 +372,7 @@ def test_menu_dump_another_empty_path_returns(tmp_path: Path, monkeypatch, capsy
     home = tmp_path / "home2"
     home.mkdir()
     monkeypatch.chdir(home)
-    with patch("builtins.input", side_effect=["2", "", "6"]):
+    with patch("builtins.input", side_effect=["2", "", "7"]):
         assert run_interactive_menu() == 0
     assert "No path entered" in capsys.readouterr().out
 
@@ -380,7 +382,7 @@ def test_menu_preview_writes_nothing(tmp_path: Path, monkeypatch, capsys):
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["3", "6"]):
+    with patch("builtins.input", side_effect=["3", "7"]):
         assert run_interactive_menu() == 0
     assert not (proj / "previewproj.txt").exists()
     assert not (tmp_path / "previewproj.txt").exists()
@@ -388,7 +390,7 @@ def test_menu_preview_writes_nothing(tmp_path: Path, monkeypatch, capsys):
 
 
 def test_menu_help_prints_usage(capsys):
-    with patch("builtins.input", side_effect=["5", "6"]):
+    with patch("builtins.input", side_effect=["6", "7"]):
         assert run_interactive_menu() == 0
     assert "usage:" in capsys.readouterr().out.lower()
 
@@ -400,7 +402,7 @@ def test_menu_update_existing_dump_with_confirmation(tmp_path: Path, monkeypatch
     existing = tmp_path / "updproj.txt"
     existing.write_text("STALE CONTENT", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["4", "y", "6"]):
+    with patch("builtins.input", side_effect=["4", "y", "7"]):
         assert run_interactive_menu() == 0
     text = existing.read_text(encoding="utf-8")
     assert "STALE CONTENT" not in text
@@ -414,7 +416,7 @@ def test_menu_update_decline_preserves_dump(tmp_path: Path, monkeypatch):
     existing = tmp_path / "updkeep.txt"
     existing.write_text("KEEP ME", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["4", "n", "6"]):
+    with patch("builtins.input", side_effect=["4", "n", "7"]):
         assert run_interactive_menu() == 0
     assert existing.read_text(encoding="utf-8") == "KEEP ME"
 
@@ -424,7 +426,7 @@ def test_menu_update_missing_dump_offers_create(tmp_path: Path, monkeypatch, cap
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["4", "y", "", "6"]):
+    with patch("builtins.input", side_effect=["4", "y", "", "7"]):
         assert run_interactive_menu() == 0
     out = tmp_path / "freshproj.txt"
     assert out.exists()
@@ -436,7 +438,7 @@ def test_menu_update_missing_dump_decline(tmp_path: Path, monkeypatch):
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["4", "n", "6"]):
+    with patch("builtins.input", side_effect=["4", "n", "7"]):
         assert run_interactive_menu() == 0
     assert not (tmp_path / "nodump.txt").exists()
 
@@ -448,7 +450,7 @@ def test_menu_update_leaves_legacy_markdown_alone(tmp_path: Path, monkeypatch, c
     legacy = proj / "legacyproj.md"
     legacy.write_text("LEGACY MARKDOWN", encoding="utf-8")
     monkeypatch.chdir(proj)
-    with patch("builtins.input", side_effect=["4", "n", "6"]):
+    with patch("builtins.input", side_effect=["4", "n", "7"]):
         assert run_interactive_menu() == 0
     assert legacy.read_text(encoding="utf-8") == "LEGACY MARKDOWN"
     assert "legacy" in capsys.readouterr().out.lower()
