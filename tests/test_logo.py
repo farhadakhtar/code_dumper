@@ -364,26 +364,21 @@ def test_encoding_fallback_and_reconfigure():
 
 def test_asset_bytes_survives_non_file_installs(monkeypatch):
     """Zip-style installs expose no plain file; byte access still works."""
-    from codedumper import logo as logo_module
+    import importlib.resources as real_resources
+    real_png = logo_asset_path()
+    assert real_png is not None
 
     class _FakeTrav:
         def is_file(self):
             return False
 
         def read_bytes(self):
-            return logo_asset_path().read_bytes()  # type: ignore[union-attr]
+            return real_png.read_bytes()
 
     class _FakeFiles:
         def joinpath(self, _):
             return _FakeTrav()
 
-    monkeypatch.setattr(
-        logo_module.importlib_resources if hasattr(logo_module, "importlib_resources") else "os",
-        "files" if hasattr(getattr(logo_module, "importlib_resources", object()), "files") else "environ",
-        lambda *a, **k: _FakeFiles(),
-        raising=False)
-    # Simpler, robust route: patch the module-level import instead.
-    import importlib.resources as real_resources
     monkeypatch.setattr(real_resources, "files", lambda *a, **k: _FakeFiles())
     data = logo.logo_asset_bytes()
     assert data is not None and data[:8] == b"\x89PNG\r\n\x1a\n"
