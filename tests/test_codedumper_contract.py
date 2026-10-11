@@ -13,7 +13,6 @@ from unittest.mock import patch
 
 import pytest
 
-from codedumper import logo
 from codedumper.cli import MENU_BODY, MENU_PROMPT, _menu_open_github, execute_dump, main, run_interactive_menu
 from codedumper.models import ScanConfig
 from codedumper.renderer import render_markdown
@@ -321,41 +320,36 @@ def test_menu_banner(capsys):
     assert "7. Exit" in out
 
 
-def test_menu_shows_image_logo_when_capable(monkeypatch, capsys):
-    """Forced-capability integration: real asset pixels become ANSI art."""
+def test_menu_shows_green_wordmark_when_color_forced(monkeypatch, capsys):
+    """Forced-color integration: fixed green wordmark above the menu."""
     import codedumper
-    monkeypatch.setattr("codedumper.logo.terminal_supports_truecolor",
-                        lambda stream=None, env=None: True)
-    monkeypatch.setenv("COLUMNS", "100")
+    monkeypatch.setenv("CLICOLOR_FORCE", "1")
+    monkeypatch.setenv("COLUMNS", "200")
     with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
     out = capsys.readouterr().out
-    assert "\x1b[38;2;" in out  # true-color escapes from real pixels
-    assert "\u2584" in out
+    assert out.startswith("\x1b[1;32m")  # green wordmark first
+    assert "██████" in out  # block-letter letterforms, not plain text
+    assert out.count("\x1b[0m") >= 1  # styles reset
     assert f"v{codedumper.__version__}" in out
     assert "Turn your codebase into a clean, AI-ready dump." in out
     assert " 1. Dump the current project" in out
-    # Identity preserved without text duplication.
-    assert "CODEDUMPER CLI" not in out
-    assert out.count("AI-ready") == 1
-    assert "Turn your codebase into Markdown." not in out
-    # Final art row is reset-terminated before the branding lines that
-    # follow: nothing overwrites the image, and no debug output leaks
-    # without opt-in.
-    assert "\x1b[0m\n" in out
+    assert "CODEDUMPER CLI" not in out  # no replacement text heading
 
 
-def test_menu_art_path_stays_silent_without_debug(monkeypatch, capsys):
-    """Even when art renders, stderr stays clean unless debugging."""
-    monkeypatch.setattr("codedumper.logo.terminal_supports_truecolor",
-                        lambda stream=None, env=None: True)
-    monkeypatch.setenv("COLUMNS", "100")
-    monkeypatch.delenv(logo.LOGO_DEBUG_ENV_VAR, raising=False)
+def test_menu_wordmark_plain_without_color(monkeypatch, capsys):
+    """Default piped output: identical wordmark with no ANSI escapes."""
+    import codedumper
+    from codedumper.cli import WORDMARK_TEXT
+    monkeypatch.delenv("CLICOLOR_FORCE", raising=False)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("COLUMNS", "200")
     with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
-    captured = capsys.readouterr()
-    assert "\x1b[38;2;" in captured.out
-    assert captured.err == ""
+    out = capsys.readouterr().out
+    assert WORDMARK_TEXT in out
+    assert "\x1b[" not in out
+    assert f"v{codedumper.__version__}" in out
 
 
 def test_menu_invalid_choice_reprompts(capsys):
