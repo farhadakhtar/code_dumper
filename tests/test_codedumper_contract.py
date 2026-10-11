@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from codedumper.cli import BANNER, MENU_PROMPT, _menu_open_github, execute_dump, main, run_interactive_menu
+from codedumper.cli import MENU_BODY, MENU_PROMPT, _menu_open_github, execute_dump, main, run_interactive_menu
 from codedumper.models import ScanConfig
 from codedumper.renderer import render_markdown
 from codedumper.scanner import scan_repository
@@ -273,16 +273,17 @@ def test_menu_exit_option():
 
 
 def test_menu_matches_exact_spec(capsys):
-    """The launch screen must match the approved specification verbatim."""
+    """The fallback launch screen matches the specification verbatim.
+
+    Under pytest stdout is not a tty, so the image logo is skipped and the
+    plain menu (dynamic version + options block) is shown.
+    """
     with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
+    import codedumper
     out = capsys.readouterr().out
-    assert out == BANNER + "\nGoodbye!\n"
-    # Spot-check line breaks, spacing, labels, and numbering verbatim:
-    # flush-left heading, one blank after it, exact subtitle indent,
-    # options on consecutive lines with no blanks between them.
-    assert out.startswith("CODEDUMPER CLI\n\n")
-    assert "         Turn your codebase into Markdown.\n" in out
+    assert out == f"v{codedumper.__version__}\n\n" + MENU_BODY + "\nGoodbye!\n"
+    # Options on consecutive lines with no blanks between them.
     assert (" 1. Dump the current project\n"
             " 2. Dump another project\n"
             " 3. Preview project contents\n"
@@ -290,7 +291,10 @@ def test_menu_matches_exact_spec(capsys):
             " 5. Configure exclusions\n"
             " 6. Help and documentation\n"
             " 7. Exit\n") in out
-    # PowerShell/CMD-safe: menu output must be pure ASCII.
+    # No plain-text replacement heading and no duplicated tagline text.
+    assert "CODEDUMPER CLI" not in out
+    assert "AI-ready" not in out
+    # PowerShell/CMD-safe: fallback menu output must be pure ASCII.
     out.encode("ascii")
     # The prompt itself is passed to input(), not printed (mocked input
     # never echoes it), so verify the constant directly.
@@ -301,8 +305,6 @@ def test_menu_banner(capsys):
     with patch("builtins.input", side_effect=["7"]):
         assert run_interactive_menu() == 0
     out = capsys.readouterr().out
-    assert "CODEDUMPER CLI" in out
-    assert "Turn your codebase into Markdown." in out
     assert "1. Dump the current project" in out
     assert "2. Dump another project" in out
     assert "3. Preview project contents" in out
@@ -310,6 +312,25 @@ def test_menu_banner(capsys):
     assert "5. Configure exclusions" in out
     assert "6. Help and documentation" in out
     assert "7. Exit" in out
+
+
+def test_menu_shows_image_logo_when_capable(monkeypatch, capsys):
+    """Forced-capability integration: real asset pixels become ANSI art."""
+    import codedumper
+    monkeypatch.setattr("codedumper.logo.terminal_supports_truecolor",
+                        lambda stream=None, env=None: True)
+    monkeypatch.setenv("COLUMNS", "100")
+    with patch("builtins.input", side_effect=["7"]):
+        assert run_interactive_menu() == 0
+    out = capsys.readouterr().out
+    assert "\x1b[38;2;" in out  # true-color escapes from real pixels
+    assert "\u2584" in out
+    assert f"v{codedumper.__version__}" in out
+    assert " 1. Dump the current project" in out
+    # Identity preserved without text duplication.
+    assert "CODEDUMPER CLI" not in out
+    assert "AI-ready" not in out
+    assert "Turn your codebase" not in out
 
 
 def test_menu_invalid_choice_reprompts(capsys):
