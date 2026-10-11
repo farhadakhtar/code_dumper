@@ -148,28 +148,6 @@ def format_brand_lines(term_cols: int, version: str) -> List[str]:
     return lines
 
 
-TAGLINE = "Turn your codebase into a clean, AI-ready dump."
-
-
-def terminal_width(default: int = 80) -> int:
-    """Best-effort terminal column count (respects ``COLUMNS``)."""
-    try:
-        import shutil
-        return shutil.get_terminal_size((default, 24)).columns or default
-    except (AttributeError, ValueError, OSError):
-        return default
-
-
-def format_brand_lines(term_cols: int, version: str) -> List[str]:
-    """Centered ``v<version>`` + tagline lines for the launch screen."""
-    width = max(term_cols, 1)
-    version_line = f"v{version}"
-    lines = [" " * max(0, (width - len(version_line)) // 2) + version_line]
-    if len(TAGLINE) <= term_cols:
-        lines.append(" " * max(0, (width - len(TAGLINE)) // 2) + TAGLINE)
-    return lines
-
-
 def _color_enabled(stream=None, env=None) -> bool:
     """Decide whether ANSI color may be emitted (NO_COLOR/dumb off)."""
     environment = os.environ if env is None else env
