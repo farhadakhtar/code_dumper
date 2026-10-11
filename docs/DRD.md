@@ -39,7 +39,7 @@ code_dumper/
 ├── codedumper/
 │   ├── __init__.py                 # version + public exports
 │   ├── __main__.py                 # `python -m codedumper`
-│   ├── cli.py                      # menu (1-5) + dump/legacy parsers + orchestration (TR-001/002/007/009/010/012/020)
+│   ├── cli.py                      # spec menu (1-7) + dump/legacy parsers + orchestration
 │   ├── models.py                   # ScanConfig / FileItem / OmissionRecord / ScanResult
 │   ├── scanner.py                  # sorted recursion + ingestion + output self-exclusion (TR-003)
 │   ├── filter.py                   # precedence chain (TR-008)
@@ -47,14 +47,17 @@ code_dumper/
 │   ├── tree.py                     # structure tree (TR-004)
 │   ├── renderer.py                 # text + Markdown parts/renderers (TR-005/011)
 │   ├── writer.py                   # atomic write/stream + overwrite guard (TR-009)
+│   ├── logo.py                     # PNG decode + true-color launch art + fallback (TR-022)
+│   ├── logo.png                    # bundled official artwork (byte-identical to root logo.png)
 │   ├── updater.py                  # release check + verified install, isolated (TR-021)
 │   └── reporter.py                 # console summary (TR-011)
 ├── autocommit/                     # preserved companion (out of CodeDumper scope)
 ├── docs/                           # PRD/ERD/TRD/DRD/EDR/TRACEABILITY/ASSESSMENT
 └── tests/
     ├── test_codedumper.py          # engine + legacy CLI tests
-    ├── test_codedumper_contract.py # contract: dump/menu/format tests
+    ├── test_codedumper_contract.py # contract: dump/menu/format/launch tests
     ├── test_ux_update.py           # menu flows, .txt contract, updater (mocked)
+    ├── test_logo.py                # asset, decoder, capability, fallback tests
     └── test_performance.py         # NFR-001/002 benchmarks + determinism
 ```
 
@@ -171,23 +174,24 @@ API/test compatibility.
 ### 3.7 `cli` — menu + parsers + orchestration (TR-001/002/007/009/010/012/020)
 
 ```python
-BANNER: str                        # specified 1-5 menu text
+MENU_BODY: str                       # spec options block (1-7), byte-stable
+MENU_PROMPT: str                     # "Select an option [1-7]: "
 def build_parser() -> argparse.ArgumentParser: ...   # dump subcommand + legacy
 def parse_size_str(val: str) -> int: ...             # B/KB/MB/GB grammar
 def default_output_path(target: Path, format: str) -> Path: ...  # outside-project rule
-def run_interactive_menu() -> int: ...               # options 1-5
+def run_interactive_menu() -> int: ...               # logo + version + options 1-7
 def execute_dump(target_dir, output_path, force, exclude_patterns,  # shared dump pipeline
                  include_hidden, max_size, no_tree, dry_run, dump_format) -> int: ...
 def main(argv: list[str] | None = None) -> int: ...
 ```
 
-Dispatch: `argv == []` (or `None` resolved to `[]`) → menu; first token
-`dump` → subcommand; else legacy path. `--format {text,markdown}`
-(default `text`), `--max-file-size` primary, `--max-size` alias. Option
-`1` prompts for an output path (default accepted on Enter); option `2`
-confirms before regenerating the located `.txt` dump; option `3` opens
-the browser; option `4` delegates to `updater.run_update_interactive`;
-`5`/EOF exits `0`; `KeyboardInterrupt` → `130`.
+Launch: `logo.print_launch_logo()` (art or silent fallback) →
+`v<installed>` version line → `MENU_BODY` → prompt loop.
+Dispatch: `1` dump CWD (output-path prompt); `2` prompt path then dump;
+`3` dry-run preview; `4` update-dump flow with confirmation; `5` session
+exclusion globs; `6` print help; `7`/EOF exits `0`;
+`KeyboardInterrupt` → `130`. `--format {text,markdown}` (default `text`),
+`--max-file-size` primary, `--max-size` alias.
 
 ### 3.9 `updater` — release check + verified install (TR-021)
 
