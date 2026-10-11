@@ -31,6 +31,7 @@ truecolor+alpha). No third-party imaging dependency.
 from __future__ import annotations
 
 import os
+import math
 import struct
 import sys
 import zlib
@@ -53,6 +54,20 @@ MAX_ART_ROWS = 24
 LOGO_MAX_COLS = 96
 LOGO_H_MARGIN = 4
 MIN_ART_COLS = 32
+
+# Gamma-2.0 transfer tables (sRGB approximation): decode stored bytes to
+# linear light for averaging, re-encode afterwards. Precomputed once —
+# a few hundred float ops at import instead of per-pixel pow() calls.
+_SRGB_TO_LIN = tuple((i / 255.0) ** 2 for i in range(256))
+
+
+def _lin_to_byte(value: float) -> int:
+    """Re-encode linear-light ``value`` (0..1, clamped) to a byte."""
+    if value <= 0.0:
+        return 0
+    if value >= 1.0:
+        return 255
+    return int(255.0 * math.sqrt(value) + 0.5)
 
 
 class LogoError(Exception):
@@ -483,8 +498,13 @@ def downscale_rgba(pixels: bytes, width: int, height: int,
                    cols: int, rows: int) -> bytes:
     """Box-average ``pixels`` to ``cols`` x ``rows`` RGBA.
 
-    Semi-transparent samples are composited onto black (the artwork's own
-    dark background), so edges never glow against the terminal.
+    Averaging happens in gamma-2.0 linear light (a close, cheap
+    approximation of sRGB transfer characteristics) so metallic gradients
+    keep their perceived brightness instead of muddying toward dark —
+    naive byte averaging systematically darkens mid-tones. Alpha stays a
+    plain mean (it is already linear). Semi-transparent samples are
+    composited onto black (the artwork's own dark background), so edges
+    never glow against the terminal.
     """
     out = bytearray(cols * rows * 4)
     for ty in range(rows):
@@ -493,21 +513,21 @@ def downscale_rgba(pixels: bytes, width: int, height: int,
         for tx in range(cols):
             x0 = tx * width // cols
             x1 = max(x0 + 1, (tx + 1) * width // cols)
-            red = green = blue = alpha = count = 0
+            red = green = blue = alpha = count = 0.0
             for y in range(y0, y1):
                 base = y * width * 4
                 for x in range(x0, x1):
                     o = base + x * 4
-                    red += pixels[o]
-                    green += pixels[o + 1]
-                    blue += pixels[o + 2]
+                    red += _SRGB_TO_LIN[pixels[o]]
+                    green += _SRGB_TO_LIN[pixels[o + 1]]
+                    blue += _SRGB_TO_LIN[pixels[o + 2]]
                     alpha += pixels[o + 3]
                     count += 1
             cover = (alpha / count) / 255.0
             o = (ty * cols + tx) * 4
-            out[o] = int(red / count * cover)
-            out[o + 1] = int(green / count * cover)
-            out[o + 2] = int(blue / count * cover)
+            out[o] = _lin_to_byte(red / count * cover)
+            out[o + 1] = _lin_to_byte(green / count * cover)
+            out[o + 2] = _lin_to_byte(blue / count * cover)
             out[o + 3] = 255
     return bytes(out)
 
