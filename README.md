@@ -62,6 +62,25 @@ Verify the installation:
 codedumper --help
 ```
 
+### Option 1b — Install directly from GitHub (stable, non-editable)
+
+If you only want to *use* CodeDumper (not develop it), install straight
+from the repository without cloning it first (verified working):
+
+```bash
+python -m pip install "git+https://github.com/farhadakhtar/code_dumper.git"
+```
+
+This installs the `codedumper` command with zero runtime dependencies.
+To upgrade later, re-run the same command with `--upgrade`; to remove it:
+
+```bash
+python -m pip install --upgrade "git+https://github.com/farhadakhtar/code_dumper.git"
+python -m pip uninstall code_dumper
+```
+
+Use Option 1 (editable) only if you plan to modify CodeDumper's own code.
+
 > **Windows note:** if `codedumper` is reported as "not recognized", the
 > Python Scripts folder is not on your `PATH`. Either add it, or use the
 > equivalent form (works everywhere, including Linux and macOS with `python3`):
