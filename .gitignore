@@ -74,6 +74,7 @@ yarn-error.log*
 *.err
 logs/
 autocommit_state.json
+autocommit_service.bat
 
 # --- Build / cache artifacts ---
 *.tmp
