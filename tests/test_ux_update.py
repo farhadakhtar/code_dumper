@@ -536,7 +536,7 @@ def test_dump_leaves_sources_untouched_and_self_excludes(tmp_path: Path, monkeyp
         assert run_interactive_menu() == 0
 
     # The dump lives inside the project root, pre-existing sources are
-    // byte-identical, and a rescan omits the dump instead of embedding it.
+    # byte-identical, and a rescan omits the dump instead of embedding it.
     out = proj / "pristine.txt"
     assert out.exists()
     after = _hash_tree(proj)
