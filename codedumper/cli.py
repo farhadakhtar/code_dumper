@@ -614,16 +614,24 @@ def _menu_open_github() -> None:
         print(f"  {GITHUB_REPO_URL}", file=sys.stderr)
 
 
-def run_interactive_menu() -> int:
-    """Launch the interactive CodeDumper menu. Returns the exit code.
-
-    Display matches the approved launch-screen specification verbatim.
-    """
+def _print_menu_screen() -> None:
+    """Print the full launch screen: wordmark, branding, and all options."""
     print_wordmark()
     for line in format_brand_lines(terminal_width(), codedumper.__version__):
         print(line)
     print()
     print(MENU_BODY)
+
+
+def run_interactive_menu() -> int:
+    """Launch the interactive CodeDumper menu. Returns the exit code.
+
+    Display matches the approved launch-screen specification verbatim.
+    The complete menu is redisplayed after every completed operation
+    (success, cancellation, recoverable error, invalid input) until the
+    user exits; a single flat loop guarantees each operation runs once.
+    """
+    _print_menu_screen()
     session_excludes: List[str] = []
     try:
         while True:
@@ -645,6 +653,7 @@ def run_interactive_menu() -> int:
                 return 0
             else:
                 print(f"Invalid choice: '{choice}'. Please select an option [1-7].")
+            _print_menu_screen()
     except _MenuExit as e:
         return e.code
 
