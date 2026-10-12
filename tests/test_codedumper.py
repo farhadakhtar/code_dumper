@@ -141,6 +141,22 @@ def test_filter_max_size():
     assert engine.should_skip_file("small.txt", "small.txt", 500, 1000) is None
 
 
+def test_filter_temporary_write_files():
+    """Atomic-write temp files (`.tmp.<pid>.<name>`) are never ingested,
+    even when hidden files are explicitly included."""
+    engine_hide = ExclusionEngine(include_hidden=False)
+    assert engine_hide.should_skip_file(".tmp.1234.proj.txt", ".tmp.1234.proj.txt", 10, 1000) == "TEMPORARY_FILE"
+    assert engine_hide.should_skip_directory(".tmp.staging", ".tmp.staging") == "TEMPORARY_FILE"
+
+    engine_show = ExclusionEngine(include_hidden=True)
+    assert engine_show.should_skip_file(".tmp.1234.proj.txt", ".tmp.1234.proj.txt", 10, 1000) == "TEMPORARY_FILE"
+
+    # Ordinary names merely containing "tmp" are unaffected.
+    assert engine_hide.should_skip_file("tmp.txt", "tmp.txt", 10, 1000) == "HIDDEN_FILE"
+    assert engine_show.should_skip_file("tmp.txt", "tmp.txt", 10, 1000) is None
+    assert engine_hide.should_skip_file("tmp_notes.txt", "tmp_notes.txt", 10, 1000) is None
+
+
 # ---------------------------------------------------------------------------
 # Unit Tests: Directory Tree Generation
 # ---------------------------------------------------------------------------
