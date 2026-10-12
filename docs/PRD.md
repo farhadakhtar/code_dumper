@@ -83,7 +83,7 @@ are real scan results; nothing is fabricated.
 
 - **W-1 Get a dump (menu `1`):** User runs `codedumper` in a project
   (wordmark launch), picks `1`, accepts (or overrides) the default
-  `<name>.txt` path outside the project, receives the file plus a
+  `<name>.txt` path inside the project root, receives the file plus a
   real-counts summary.
 - **W-2 Dump another (menu `2`):** User picks `2`, enters a project path,
   and gets its dump the same way.
@@ -95,7 +95,7 @@ are real scan results; nothing is fabricated.
 - **W-5 Session exclusions (menu `5`):** Extra glob patterns apply to dumps
   in the same session.
 - **W-5 Direct dump:** `codedumper dump ./my-project` writes
-  `my-project.txt` outside the target.
+  `my-project/my-project.txt` inside the target root.
 - **W-6 Custom output:** `codedumper dump ./my-project --output ./exports/codebase.txt`.
 - **W-7 Preview:** `codedumper dump ./my-project --dry-run` reports without
   writing.
@@ -215,7 +215,7 @@ Exit codes per FR-019.
 
 ### 7.1 MVP (v1.1)
 
-Menu 1–7 with image-backed launch art, `.txt` default + Markdown opt-in, outside-project defaults with
+Menu 1–7 with image-backed launch art, `.txt` default + Markdown opt-in, in-project defaults with
 self-exclusion, update-dump flow, GitHub opener, release check with honest
 unavailable state, pytest suite, install docs, `LICENSE`.
 
