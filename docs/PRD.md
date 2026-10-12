@@ -38,8 +38,8 @@ reviewer is friction-heavy:
 ### 1.3 Proposed Solution
 
 Typing `codedumper` opens a guided menu (get a dump, update a dump, open
-GitHub, check for updates, exit). Dumps default to plain `.txt` outside the
-scanned project, with secrets excluded, binaries skipped, atomic writes,
+GitHub, check for updates, exit). Dumps default to plain `.txt` inside the
+scanned project's root, with secrets excluded, binaries skipped, atomic writes,
 and honest update checks against official GitHub releases. Direct commands
 (`codedumper dump ...`) serve scripts and automation. All statistics shown
 are real scan results; nothing is fabricated.

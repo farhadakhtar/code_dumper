@@ -467,7 +467,7 @@ works fully offline — the updater is a separate module.
 - Plain-text (`.txt`) dump format by default; Markdown via `--format`.
 - Beginner-friendly interactive menu (spec launch screen).
 - Safe self-update check against official GitHub releases.
-- Dumps default to outside the scanned project.
+- Dumps default to inside the scanned project's root (self-excluded).
 
 ### Version 1.0 — Reliable core CLI
 
