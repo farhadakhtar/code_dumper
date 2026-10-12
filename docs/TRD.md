@@ -59,9 +59,10 @@
 - **Source of installs:** GitHub `https://github.com/farhadakhtar/code_dumper.git`
   only. PyPI installation must not be documented as working until a release
   is published **and** install-verified.
-- **Never** install anything into, or write anything inside, a scanned
-  project: dry-runs write nothing; real dumps default outside the target
-  unless `--output` says otherwise.
+- **Never** install a scanned project's dependencies into it or modify its
+  sources: dry-runs write nothing; the only file a dump run ever writes
+  inside the target is the dump file itself (plus its brief atomic-write
+  temp file), and both are always excluded from scans.
 
 ---
 

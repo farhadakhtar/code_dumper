@@ -8,7 +8,7 @@
 
 *v2.1.0 changes: specified menu (options 1–7) with image-backed launch
 art, plain-text (`.txt`) default output contract, `--format markdown`
-opt-in, outside-project default location with output self-exclusion,
+opt-in, in-project default location with output self-exclusion,
 update-dump flow, and updater module with honest unavailable state.*
 
 ---
@@ -121,7 +121,7 @@ are real scan results; nothing is fabricated.
 | **FR-011** | Sensitive-file protection | Credential patterns **always** excluded — even with `--include-hidden`. Only filenames/reasons reported, never secret values. | Critical |
 | **FR-012** | Hidden-file handling | Dotfiles excluded by default; `--include-hidden` includes them (FR-011 still applies). | High |
 | **FR-013** | Custom exclusions | Repeatable `--exclude PATTERN` (glob on filename + relative path). | Medium |
-| **FR-014** | Output selection + outside rule | `--output` (`-o`) selects destination; default `<name>.txt` (or `.md` with `--format markdown`) placed **outside** the scanned project when practical (CWD for foreign targets; parent dir for CWD targets; CWD fallback at filesystem root). The output file itself is always excluded from its own scan (`OUTPUT_FILE_SELF`). | High |
+| **FR-014** | Output selection + inside rule | `--output` (`-o`) selects destination; default `<name>.txt` (or `.md` with `--format markdown`) written inside the scanned project's root. The output file itself is always excluded from its own scan (`OUTPUT_FILE_SELF`), and atomic-write temp files (`.tmp.*`) are always excluded (`TEMPORARY_FILE`). | High |
 | **FR-015** | Overwrite protection | Existing output never silently overwritten: non-interactive refuses (exit 1) without `--force`; menu asks explicit confirmation. Atomic temp-file + `os.replace` writes. | High |
 | **FR-016** | Dry-run preview | `--dry-run` scans and reports real statistics without writing. | Medium |
 | **FR-017** | Honest reporting | `EXCLUDED FILES` section + console counts (discovered/included/excluded/sensitive/duration/output) show measured values only. | High |
