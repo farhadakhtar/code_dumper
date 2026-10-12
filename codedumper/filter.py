@@ -76,6 +76,11 @@ class ExclusionEngine:
 
         Returns reason string if it should be skipped, else None.
         """
+        # 0. Atomic-write temporary paths (never ingested, even if hidden
+        #    files are included).
+        if dir_name.startswith(".tmp."):
+            return "TEMPORARY_FILE"
+
         # 1. Built-in VCS and noise directories
         if dir_name in DEFAULT_NOISE_DIRS or dir_name.endswith(".egg-info"):
             return "DEFAULT_NOISE_DIRECTORY"
@@ -104,6 +109,11 @@ class ExclusionEngine:
 
         Returns reason string if excluded, else None.
         """
+        # 0. Atomic-write temporary files (never ingested, even when hidden
+        #    files are explicitly included).
+        if file_name.startswith(".tmp."):
+            return "TEMPORARY_FILE"
+
         # 1. Highest priority: Sensitive files
         if self.is_sensitive(file_name):
             return "SENSITIVE_CREDENTIAL"

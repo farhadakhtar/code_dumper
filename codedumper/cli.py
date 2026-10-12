@@ -236,7 +236,7 @@ def _add_dump_options(parser: argparse.ArgumentParser) -> None:
         "--output",
         dest="output_path",
         default=None,
-        help="Destination filepath for the generated dump. (Default: <project_directory_name>.txt outside the scanned project)",
+        help="Destination filepath for the generated dump. (Default: <project_directory_name>.txt inside the project root)",
     )
     parser.add_argument(
         "-f",
@@ -347,23 +347,18 @@ def build_dump_parser() -> argparse.ArgumentParser:
 
 
 def default_output_path(target_path: Path, dump_format: str) -> Path:
-    """Predictable default dump location: outside the scanned project.
+    """Predictable default dump location: inside the project's root.
 
-    - Dumping another project from elsewhere: ``<name>.txt`` in the current
-      working directory (already outside the target).
-    - Dumping the current directory: ``<name>.txt`` in the *parent*
-      directory, so later scans of the project do not re-ingest the dump.
-    - Fallback (e.g. filesystem root, where parent == target): current
-      directory. The scanner additionally always excludes the output file
-      itself (``OUTPUT_FILE_SELF``), so a dump inside its own project can
-      never be embedded.
+    ``<name>.txt`` (or ``.md`` with ``--format markdown``) is written next
+    to the scanned sources so the dump visibly belongs to the project.
+    The scanner always excludes the output file itself
+    (``OUTPUT_FILE_SELF``), and atomic-write temporary files
+    (``.tmp.*``) are always excluded too, so a dump can never embed
+    itself or a half-written temp file on subsequent scans.
     """
     extension = FORMAT_EXTENSIONS.get(dump_format, "txt")
     base_name = f"{target_path.name or 'repository'}.{extension}"
-    current_dir = Path.cwd().resolve()
-    if target_path == current_dir and target_path.parent != target_path:
-        return target_path.parent / base_name
-    return current_dir / base_name
+    return target_path / base_name
 
 
 def execute_dump(
