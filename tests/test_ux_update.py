@@ -524,7 +524,7 @@ def test_update_confirm_eof_cancels(monkeypatch, capsys, tmp_path: Path):
 # Dumping and update checks never modify the project
 # ---------------------------------------------------------------------------
 
-def test_dump_leaves_project_untouched(tmp_path: Path, monkeypatch):
+def test_dump_leaves_sources_untouched_and_self_excludes(tmp_path: Path, monkeypatch):
     proj = tmp_path / "pristine"
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
@@ -535,5 +535,15 @@ def test_dump_leaves_project_untouched(tmp_path: Path, monkeypatch):
     with patch("builtins.input", side_effect=["1", "", "7"]):
         assert run_interactive_menu() == 0
 
-    assert _hash_tree(proj) == before
-    assert (tmp_path / "pristine.txt").exists()  # dump went outside
+    # The dump lives inside the project root, pre-existing sources are
+    // byte-identical, and a rescan omits the dump instead of embedding it.
+    out = proj / "pristine.txt"
+    assert out.exists()
+    after = _hash_tree(proj)
+    for rel_path, digest in before.items():
+        assert after[rel_path] == digest
+    out.write_text("POISON - must never be embedded\n", encoding="utf-8")
+    assert main(["dump", "-o", str(out), "--force"]) == 0
+    rescanned = out.read_text(encoding="utf-8")
+    assert "POISON" not in rescanned
+    assert "OUTPUT_FILE_SELF" in rescanned
