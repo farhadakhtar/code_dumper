@@ -122,10 +122,11 @@ same version line and menu instead — never a wrapped or substituted
 logo. The dynamic version line always reflects the installed package.
 
 - **1. Dump the current project:** scans the current directory and writes
-  `<project-name>.txt` next to the project (outside it, so later scans
-  never re-ingest the dump). You may accept the default path or type
-  another one. A concise summary (discovered / included / excluded /
-  sensitive-skipped counts, duration, output path) is always shown.
+  `<project-name>.txt` inside the project root. You may accept the default
+  path or type another one. A concise summary (discovered / included /
+  excluded / sensitive-skipped counts, duration, output path) is always
+  shown. The dump itself is always excluded from later scans, so it never
+  re-ingests itself.
 - **2. Dump another project:** prompts for a project path, then dumps it
   the same way.
 - **3. Preview project contents:** dry-run scan of the current directory
@@ -148,8 +149,8 @@ without changes.
 Select an option [1-7]: 1
 
 Project: my-application
-Default output: D:\Projects\my-application.txt
-Output path [D:\Projects\my-application.txt] (Enter to accept):
+Default output: D:\Projects\my-application\my-application.txt
+Output path [D:\Projects\my-application\my-application.txt] (Enter to accept):
 
 [INFO] Project: my-application
 [INFO] Scanning directory...
@@ -161,7 +162,7 @@ Files included:         35
 Files excluded:         13
 Sensitive files skipped: 2
 
-Output: D:\Projects\my-application.txt
+Output: D:\Projects\my-application\my-application.txt
 
 [OK] Export completed successfully.
 ```
@@ -194,11 +195,11 @@ Windows example:
 codedumper dump "D:\Projects\my-project"
 ```
 
-Without `--output`, the dump is written outside the scanned project:
-`<project-name>.txt` in the current directory (or in the parent directory
-when dumping the current directory itself), so later scans never
-re-ingest the dump. A dump file that ends up inside its own project is
-always excluded from the scan.
+Without `--output`, the dump is written inside the scanned project's root
+as `<project-name>.txt` (for example,
+`codedumper dump ./my-project` writes `./my-project/my-project.txt`).
+The dump file itself — and any `.tmp.*` atomic-write temporary files —
+are always excluded from scans, so later dumps never re-ingest them.
 
 ### 3. Choose the output file
 
