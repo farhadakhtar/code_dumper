@@ -25,7 +25,7 @@
 | FR-011 | PRD §3 | TR-008 | `filter.py` sensitive tier | `ExclusionRule` (sensitive) | `test_filter_sensitive_credentials`, include-hidden + txt secret tests | Verified |
 | FR-012 | PRD §3 | TR-008 | `filter.py` | `ExclusionRule` (hidden) | `test_filter_hidden_file_handling` | Verified |
 | FR-013 | PRD §3 | TR-008 | `filter.py` | `ExclusionRule` (user) | `test_filter_custom_user_globs`, `test_dump_subcommand_exclude` | Verified |
-| FR-014 | PRD §3 | TR-009 | `cli.py` defaults + `writer.py` | `DumpArtifact` | default-path-outside + self-exclusion + custom-output tests | Verified |
+| FR-014 | PRD §3 | TR-009 | `cli.py` defaults + `writer.py` | `DumpArtifact` | default-path-inside + self-exclusion + temp-exclusion + rescan + custom-output tests | Verified |
 | FR-015 | PRD §3 | TR-009 | `writer.py` + menu confirm | `DumpArtifact` | `test_writer_*`, `test_cli_overwrite_refusal`, menu confirm/decline tests | Verified |
 | FR-016 | PRD §3 | TR-010 | `cli.py` dry-run | `ScanSession.dry_run` | `test_cli_dry_run`, `dump --dry-run` tests | Verified |
 | FR-017 | PRD §3 | TR-011 | `renderer.py`, `reporter.py` | `GenerationReport`, `OmissionRecord` | txt/markdown layout + console-report tests | Verified |
@@ -67,8 +67,8 @@ help-printer) and the default `.md` output; Markdown remains via
 1. CLI vocabulary (menu `1..7`, `dump`, `--output`, `--format`, `--dry-run`,
    `--include-hidden`, `--exclude`, `--max-file-size`, `--help`,
    `--version`) identical across README/PRD/TRD/DRD.
-2. Default output identical everywhere: `<name>.txt` outside the scanned
-   project; Markdown only via `--format markdown`.
+2. Default output identical everywhere: `<name>.txt` inside the scanned
+   project root (self-excluded on rescan); Markdown only via `--format markdown`.
 3. Plain-text layout identical everywhere: `CODEBASE DUMP:` →
    `PROJECT STRUCTURE` → `FILE:`/`END FILE:` × N → `EXCLUDED FILES`.
 4. Exclusion precedence identical everywhere: self-output > sensitive >

@@ -176,7 +176,7 @@ MENU_BODY: str                       # spec options block (1-7), byte-stable
 MENU_PROMPT: str                     # "Select an option [1-7]: "
 def build_parser() -> argparse.ArgumentParser: ...   # dump subcommand + legacy
 def parse_size_str(val: str) -> int: ...             # B/KB/MB/GB grammar
-def default_output_path(target: Path, format: str) -> Path: ...  # outside-project rule
+def default_output_path(target: Path, format: str) -> Path: ...  # inside-root rule
 def run_interactive_menu() -> int: ...               # wordmark + version + options 1-7
 def execute_dump(target_dir, output_path, force, exclude_patterns,  # shared dump pipeline
                  include_hidden, max_size, no_tree, dry_run, dump_format) -> int: ...
