@@ -68,7 +68,7 @@ def test_dump_subcommand_basic(mini_project: Path, tmp_path: Path):
 def test_dump_subcommand_default_path(tmp_path: Path, monkeypatch):
     """`codedumper dump` with no path dumps the current directory.
 
-    The default output lands OUTSIDE the scanned project (parent dir).
+    The default output lands INSIDE the scanned project's root.
     """
     proj = tmp_path / "cur"
     proj.mkdir()
@@ -76,9 +76,8 @@ def test_dump_subcommand_default_path(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(proj)
     rc = main(["dump", "--force"])
     assert rc == 0
-    out = tmp_path / "cur.txt"
+    out = proj / "cur.txt"
     assert out.exists()
-    assert not (proj / "cur.txt").exists()
     assert "CODEBASE DUMP: cur" in out.read_text(encoding="utf-8")
 
 
@@ -372,16 +371,15 @@ def test_menu_keyboard_interrupt_returns_130():
         assert run_interactive_menu() == 130
 
 
-def test_menu_get_dump_creates_txt_outside_project(tmp_path: Path, monkeypatch):
+def test_menu_get_dump_creates_txt_inside_project(tmp_path: Path, monkeypatch):
     proj = tmp_path / "menudump"
     proj.mkdir()
     (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
     monkeypatch.chdir(proj)
     with patch("builtins.input", side_effect=["1", "", "7"]):
         assert run_interactive_menu() == 0
-    out = tmp_path / "menudump.txt"
+    out = proj / "menudump.txt"
     assert out.exists()
-    assert not (proj / "menudump.txt").exists()
     text = out.read_text(encoding="utf-8")
     assert "CODEBASE DUMP: menudump" in text
     assert "FILE: a.py" in text
@@ -411,7 +409,7 @@ def test_menu_dump_another_project(tmp_path: Path, monkeypatch, capsys):
     monkeypatch.chdir(home)
     with patch("builtins.input", side_effect=["2", str(other), "", "7"]):
         assert run_interactive_menu() == 0
-    out = home / "other proj.txt"
+    out = other / "other proj.txt"
     assert out.exists()
     assert "CODEBASE DUMP: other proj" in out.read_text(encoding="utf-8")
     assert "FILE: src/app.py" in out.read_text(encoding="utf-8")
@@ -452,7 +450,7 @@ def test_menu_configure_exclusions_applies_to_dump(tmp_path: Path, monkeypatch, 
     monkeypatch.chdir(proj)
     with patch("builtins.input", side_effect=["5", "*.log", "1", "", "7"]):
         assert run_interactive_menu() == 0
-    out = tmp_path / "exclproj.txt"
+    out = proj / "exclproj.txt"
     assert out.exists()
     text = out.read_text(encoding="utf-8")
     assert "FILE: keep.py" in text
@@ -504,7 +502,7 @@ def test_menu_update_missing_dump_offers_create(tmp_path: Path, monkeypatch, cap
     monkeypatch.chdir(proj)
     with patch("builtins.input", side_effect=["4", "y", "", "7"]):
         assert run_interactive_menu() == 0
-    out = tmp_path / "freshproj.txt"
+    out = proj / "freshproj.txt"
     assert out.exists()
     assert "No existing dump found" in capsys.readouterr().out
 
