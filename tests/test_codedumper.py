@@ -152,7 +152,7 @@ def test_filter_temporary_write_files():
     assert engine_show.should_skip_file(".tmp.1234.proj.txt", ".tmp.1234.proj.txt", 10, 1000) == "TEMPORARY_FILE"
 
     # Ordinary names merely containing "tmp" are unaffected.
-    assert engine_hide.should_skip_file("tmp.txt", "tmp.txt", 10, 1000) == "HIDDEN_FILE"
+    assert engine_hide.should_skip_file("tmp.txt", "tmp.txt", 10, 1000) is None
     assert engine_show.should_skip_file("tmp.txt", "tmp.txt", 10, 1000) is None
     assert engine_hide.should_skip_file("tmp_notes.txt", "tmp_notes.txt", 10, 1000) is None
 

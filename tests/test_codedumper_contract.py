@@ -107,6 +107,41 @@ def test_dump_output_self_exclusion(tmp_path: Path):
     assert "FILE: a.py" in text
 
 
+def test_dump_default_output_excluded_on_rescan(tmp_path: Path, monkeypatch):
+    """The default in-project dump is omitted (not embedded) on rescan."""
+    proj = tmp_path / "rescan"
+    proj.mkdir()
+    (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    assert main(["dump", "--force"]) == 0
+    out = proj / "rescan.txt"
+    assert out.exists()
+    # Poison the dump, then regenerate: the old content must not recur.
+    out.write_text("POISON MARKER - must never be embedded\n", encoding="utf-8")
+    assert main(["dump", "-o", str(out), "--force"]) == 0
+    text = out.read_text(encoding="utf-8")
+    assert "POISON MARKER" not in text
+    assert "OUTPUT_FILE_SELF" in text
+    assert "FILE: a.py" in text
+
+
+def test_dump_temporary_files_excluded_with_hidden_included(tmp_path: Path):
+    """A leftover `.tmp.*` write file is never embedded, even with
+    `--include-hidden` (which would otherwise admit dotfiles)."""
+    proj = tmp_path / "tmpcheck"
+    proj.mkdir()
+    (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (proj / ".tmp.9999.tmpcheck.txt").write_text(
+        "PARTIAL WRITE - must never be embedded\n", encoding="utf-8")
+    out = tmp_path / "tmpcheck_out.txt"
+    rc = main(["dump", str(proj), "-o", str(out), "--force", "--include-hidden"])
+    assert rc == 0
+    text = out.read_text(encoding="utf-8")
+    assert "PARTIAL WRITE" not in text
+    assert "TEMPORARY_FILE" in text
+    assert "FILE: a.py" in text
+
+
 def test_dump_subcommand_custom_output(mini_project: Path, tmp_path: Path):
     out = tmp_path / "exports" / "codebase.md"
     rc = main(["dump", str(mini_project), "--output", str(out)])
