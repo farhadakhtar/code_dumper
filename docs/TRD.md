@@ -100,7 +100,7 @@ codedumper [PATH] [OPTIONS]             # legacy form (FR-020)
 | Option | `dump` form | Legacy form | Default |
 |---|---|---|---|
 | Project path (positional) | `PATH` | `target_dir` | `.` |
-| Output | `-o, --output PATH` | same | `<project-dir-name>.txt` outside the target (parent dir for CWD targets) |
+| Output | `-o, --output PATH` | same | `<project-dir-name>.txt` inside the project root |
 | Format | `--format {text,markdown}` | same | `text` (`.md` output with `markdown`) |
 | Overwrite guard | `-f, --force` | same | `False` (refuse) |
 | Extra excludes | `-e, --exclude PATTERN` (repeatable) | same | `[]` |
@@ -146,6 +146,9 @@ Recursive from project root; lexicographic sort per directory
 
 ### 5.2 Exclusion Rules & Precedence
 
+0. **Atomic-write temporaries (unbypassable):** `.tmp.*` files/dirs →
+   `TEMPORARY_FILE` (checked before all other tiers, applies even with
+   `--include-hidden`).
 1. **Sensitive (unbypassable):** `.env`, `.env.*`, `*.pem`, `*.key`,
    `id_rsa*`, `id_ed25519*`, `id_ecdsa*`, `*.p12`, `*.pfx`, `*.crt`, `*.cer`,
    `credentials.*`, `secrets.*`, `token.json`, `auth.json`, `*.gpg` →
@@ -223,8 +226,8 @@ projects; Win/Unix paths (incl. spaces); unicode names; binary/oversize;
 secret exclusion (with `--include-hidden`); custom globs; permission/
 unreadable files; symlinks/traversal; plain-text contract (no `#`/fences,
 verbatim source, markers); Markdown opt-in + fence escaping; output
-creation/overwrite/invalid args/invalid `--format`; default outside-project
-location; output self-exclusion; **both** `dump` and legacy invocations;
+creation/overwrite/invalid args/invalid `--format`; default in-project
+location; output self-exclusion + temp-file exclusion; **both** `dump` and legacy invocations;
 **interactive menu** paths (`1..7`, invalid choice, EOF, Ctrl+C); update
 flows (confirm/decline/missing/legacy); GitHub opener success/failure;
 updater states (up-to-date/available/unavailable/prerelease/malformed/
