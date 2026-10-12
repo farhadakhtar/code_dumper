@@ -488,8 +488,9 @@ def _find_existing_dump(target_path: Path) -> tuple[Optional[Path], Optional[Pat
     """Locate this project's dump files.
 
     Returns ``(txt_dump, legacy_markdown_dump)`` where each is an existing
-    path or ``None``. The ``.txt`` search covers the parent directory (the
-    current default location) and the project directory itself.
+    path or ``None``. The ``.txt`` search covers the project directory
+    itself (the current default location) as well as the parent directory
+    (where older defaults wrote), preferring the parent only if both exist.
     """
     project_name = target_path.name or "repository"
     txt_name = f"{project_name}.txt"
