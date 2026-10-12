@@ -443,9 +443,9 @@ def test_menu_redisplays_after_recoverable_error(tmp_path: Path, monkeypatch, ca
     monkeypatch.chdir(home)
     with patch("builtins.input", side_effect=["2", "/nonexistent-xyz-123", "7"]):
         assert run_interactive_menu() == 0
-    out = capsys.readouterr().out
-    assert "not valid" in out
-    assert out.count(" 7. Exit") == 2
+    captured = capsys.readouterr()
+    assert "not valid" in captured.out + captured.err
+    assert captured.out.count(" 7. Exit") == 2
 
 
 def test_menu_redisplays_after_invalid_choice(capsys):
