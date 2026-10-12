@@ -406,6 +406,64 @@ def test_menu_keyboard_interrupt_returns_130():
         assert run_interactive_menu() == 130
 
 
+def test_menu_redisplays_after_successful_export(tmp_path: Path, monkeypatch, capsys):
+    proj = tmp_path / "loopdump"
+    proj.mkdir()
+    (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    with patch("builtins.input", side_effect=["1", "", "7"]):
+        assert run_interactive_menu() == 0
+    out = capsys.readouterr().out
+    # Full seven-option menu shown before AND after the export.
+    assert out.count(" 7. Exit") == 2
+    # The export itself ran exactly once.
+    assert out.count("[OK] Export completed successfully.") == 1
+    assert (proj / "loopdump.txt").exists()
+
+
+def test_menu_redisplays_after_cancellation(tmp_path: Path, monkeypatch, capsys):
+    proj = tmp_path / "loopcancel"
+    proj.mkdir()
+    (proj / "a.py").write_text("print(1)\n", encoding="utf-8")
+    existing = proj / "loopcancel.txt"
+    existing.write_text("KEEP ME", encoding="utf-8")
+    monkeypatch.chdir(proj)
+    # Option 4 finds the dump; declining the overwrite returns to the menu.
+    with patch("builtins.input", side_effect=["4", "n", "7"]):
+        assert run_interactive_menu() == 0
+    out = capsys.readouterr().out
+    assert "existing file preserved" in out
+    assert existing.read_text(encoding="utf-8") == "KEEP ME"
+    assert out.count(" 7. Exit") == 2
+
+
+def test_menu_redisplays_after_recoverable_error(tmp_path: Path, monkeypatch, capsys):
+    home = tmp_path / "loophome"
+    home.mkdir()
+    monkeypatch.chdir(home)
+    with patch("builtins.input", side_effect=["2", "/nonexistent-xyz-123", "7"]):
+        assert run_interactive_menu() == 0
+    out = capsys.readouterr().out
+    assert "not valid" in out
+    assert out.count(" 7. Exit") == 2
+
+
+def test_menu_redisplays_after_invalid_choice(capsys):
+    with patch("builtins.input", side_effect=["banana", "7"]):
+        assert run_interactive_menu() == 0
+    out = capsys.readouterr().out
+    assert "Invalid choice" in out
+    assert out.count(" 7. Exit") == 2
+
+
+def test_menu_exit_shows_menu_once(capsys):
+    with patch("builtins.input", side_effect=["7"]):
+        assert run_interactive_menu() == 0
+    out = capsys.readouterr().out
+    assert out.count(" 7. Exit") == 1
+    assert "Goodbye!" in out
+
+
 def test_menu_get_dump_creates_txt_inside_project(tmp_path: Path, monkeypatch):
     proj = tmp_path / "menudump"
     proj.mkdir()
